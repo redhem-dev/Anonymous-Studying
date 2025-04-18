@@ -3,19 +3,19 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-/*const pool = sql.createPool({
-    host: "mysql.railway.internal", //add new
-    user: "root", //add new
-    password: "jZdCrHEIuagdggHzdpquHWGNjfscupfU", //add new
-    database: "railway" //add new
-}).promise();*/
-
 const pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME
+}).promise();
+
+/*const pool = mysql.createPool({
     host: "127.0.0.1",
     user: "root",
     password: "",
     database: "ticket_support_system"
-}).promise();
+}).promise();*/
 
 // Wrap async code in a function
 async function run() {
@@ -139,11 +139,116 @@ export async function decreaseDownvoteOnTicket(ticketId) {
     );
 }
 
+//Tickets by user's id
+export async function getAllUsersTicketsByID(userId) {
+    const [rows] = await pool.query(
+        `SELECT * FROM tickets WHERE author_id = ? ORDER BY created_at DESC`,
+        [userId]
+    );
+    return rows;
+}
 
-await deleteTicket(2);
-const ticket = await getTickets();
+//FAVORITES
+export async function getAllUsersFavoriteTicketsByID(userId) {
+    const [rows] = await pool.query(
+        `SELECT t.*
+         FROM tickets t
+         JOIN favorites f ON t.id = f.ticket_id
+         WHERE f.user_id = ?`,
+        [userId]
+    );
+    return rows;
+}
 
-console.log(ticket);  
+export async function addTicketToFavourite(userId, ticketId) {
+    await pool.query(
+        `INSERT IGNORE INTO favorites (user_id, ticket_id, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)`,
+        [userId, ticketId]
+    );
+}
+
+export async function removeTicketFromFavourite(userId, ticketId) {
+    await pool.query(
+        `DELETE FROM favorites WHERE user_id = ? AND ticket_id = ?`,
+        [userId, ticketId]
+    );
+}
+
+
+
+//----------------- REPLIES -------------------------
+export async function createReply(ticketId, authorId, body, image = null) {
+    const [result] = await pool.query(
+        'INSERT INTO replies (ticket_id, author_id, body, created_at, image) VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?)',
+        [ticketId, authorId, body, image]
+    );
+    return result.insertId;
+}
+
+export async function getAllReplies(ticketId) {
+    const [rows] = await pool.query(
+        'SELECT * FROM replies WHERE ticket_id = ?',
+        [ticketId]
+    );
+    return rows;
+}
+
+export async function getReplyByID(replyId) {
+    const [rows] = await pool.query(
+        'SELECT * FROM replies WHERE id = ?',
+        [replyId]
+    );
+    return rows[0] || null;
+}
+
+export async function editReply(replyId, newBody, newImageBuffer = null) {
+    await pool.query(
+        'UPDATE replies SET body = ?, image = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [newBody, newImageBuffer, replyId]
+    );
+}
+
+export async function deleteReply(replyId) {
+    await pool.query(
+        'DELETE FROM replies WHERE id = ?',
+        [replyId]
+    );
+}
+
+export async function increaseUpvoteOnReply(replyId) {
+    await pool.query(
+        'UPDATE replies SET upvotes = upvotes + 1 WHERE id = ?',
+        [replyId]
+    );
+}
+
+export async function increaseDownvoteOnReply(replyId) {
+    await pool.query(
+        'UPDATE replies SET downvotes = downvotes + 1 WHERE id = ?',
+        [replyId]
+    );
+}
+
+export async function decreaseUpvoteOnReply(replyId) {
+    await pool.query(
+        'UPDATE replies SET upvotes = GREATEST(upvotes - 1, 0) WHERE id = ?',
+        [replyId]
+    );
+}
+
+export async function decreaseDownvoteOnReply(replyId) {
+    await pool.query(
+        'UPDATE replies SET downvotes = GREATEST(downvotes - 1, 0) WHERE id = ?',
+        [replyId]
+    );
+}
+
+
+
+await createTicket('Test Ticket', 'Test Body', 1, 1);
+const reply = await getTickets();
+
+console.log(reply);  
 
 // Call the function
 run().catch(console.error);
