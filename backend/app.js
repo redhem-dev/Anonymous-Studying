@@ -4,6 +4,12 @@ const passport = require('passport');
 require('dotenv').config();
 require('./config/auth');
 
+const { 
+    getTickets, 
+    getTicketById,
+    changeUsername
+ } = require('./config/database');
+
 function isLoggedIn(req, res, next) {
     req.user ? next(): res.sendStatus(401);
 }
@@ -47,3 +53,64 @@ app.get('/protected', isLoggedIn, (req, res) => {
 app.listen(process.env.PORT, () => {
     console.log(`Server is listening on port ${process.env.PORT}`);
 })
+
+//LOG OUT
+app.get('/logout', (req, res) => {
+    req.logout(err => {
+      if (err) {
+        return res.status(500).send('Logout failed.');
+      }
+      req.session.destroy(() => {
+        res.redirect('/');
+      });
+    });
+});
+
+//------------------ USER ------------------
+// Get user by ID (only if logged in)
+app.get('/user/:id', isLoggedIn, async (req, res) => {
+    const userId = parseInt(req.params.id);
+    const user = await getUserByID(userId);
+    if (user) {
+      res.json({ user });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+});
+
+// Change username
+app.post('/user/change-username', isLoggedIn, async (req, res) => {
+    const userId = req.user.id;
+    const { newUsername } = req.body;
+  
+    //CHECK LOGIC WITH @Edhem
+    if (!newUsername || newUsername.length < 3) {
+      return res.status(400).json({ message: 'Invalid username' });
+    }
+  
+    await changeUsername(userId, newUsername);
+    res.json({ message: 'Username updated successfully' });
+});
+
+
+//------------------ TICKETS ------------------
+
+app.get('/tickets', async (req, res) => {
+    const tickets = await getTickets();
+    res.send(tickets);
+});
+
+app.get('/tickets/:id', async (req, res) => {
+    const id = req.params.id;
+    const ticket = await getTicketById(id);
+    res.send(ticket);
+});
+
+
+
+//Error handling
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Internal Server Error' });
+});
+
