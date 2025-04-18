@@ -83,10 +83,67 @@ export async function getTicketById(id) {
     return rows[0];
 }
 
+//CHECK IMAGE BUFFER
+export async function createTicket(title, body, topicId, authorId, imageBuffer = null) {
+    const [result] = await pool.execute(
+        `INSERT INTO tickets (title, body, topic_id, author_id, created_at, image)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`,
+        [title, body, topicId, authorId, imageBuffer]
+    );
+    
+    return result.insertId;
+}
+
+export async function editTicket(ticketId, newTitle, newBody, newImageBuffer = null) {
+    await pool.execute(
+      `UPDATE tickets 
+       SET title = ?, body = ?, updated_at = CURRENT_TIMESTAMP, image = ?
+       WHERE id = ?`,
+      [newTitle, newBody, newImageBuffer, ticketId]
+    );
+}
+
+export async function deleteTicket(ticketId) {
+    await pool.execute(
+      `DELETE FROM tickets WHERE id = ?`,
+      [ticketId]
+    );
+}
+
+export async function increaseUpvoteOnTicket(ticketId) {
+    await pool.execute(
+      `UPDATE tickets SET upvotes = upvotes + 1 WHERE id = ?`,
+      [ticketId]
+    );
+}
+
+//GREATEST(..., 0) ensures that the vote counts don't go below zero
+export async function decreaseUpvoteOnTicket(ticketId) {
+    await pool.execute(
+      `UPDATE tickets SET upvotes = GREATEST(upvotes - 1, 0) WHERE id = ?`,
+      [ticketId]
+    );
+}
+  
+export async function increaseDownvoteOnTicket(ticketId) {
+    await pool.execute(
+      `UPDATE tickets SET downvotes = downvotes + 1 WHERE id = ?`,
+      [ticketId]
+    );
+}
+  
+export async function decreaseDownvoteOnTicket(ticketId) {
+    await pool.execute(
+      `UPDATE tickets SET downvotes = GREATEST(downvotes - 1, 0) WHERE id = ?`,
+      [ticketId]
+    );
+}
 
 
-const note = await getTicketById(1);
-console.log(note);  
+await deleteTicket(2);
+const ticket = await getTickets();
+
+console.log(ticket);  
 
 // Call the function
 run().catch(console.error);

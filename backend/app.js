@@ -7,7 +7,15 @@ require('./config/auth');
 const { 
     getTickets, 
     getTicketById,
-    changeUsername
+    createTicket,
+    editTicket,
+    deleteTicket,
+    changeTicketStatus,
+    changeUsername,
+    increaseUpvoteOnTicket,
+    decreaseUpvoteOnTicket,
+    increaseDownvoteOnTicket,
+    decreaseDownvoteOnTicket
  } = require('./config/database');
 
 function isLoggedIn(req, res, next) {
@@ -95,11 +103,13 @@ app.post('/user/change-username', isLoggedIn, async (req, res) => {
 
 //------------------ TICKETS ------------------
 
+//GET ALL TICKETS
 app.get('/tickets', async (req, res) => {
     const tickets = await getTickets();
     res.send(tickets);
 });
 
+//GET TICKET BY ID
 app.get('/tickets/:id', async (req, res) => {
     const id = req.params.id;
     const ticket = await getTicketById(id);
@@ -107,6 +117,73 @@ app.get('/tickets/:id', async (req, res) => {
 });
 
 
+//CREATE
+app.post('/ticket', isLoggedIn, async (req, res) => {
+    const { title, body, topicId } = req.body;
+    const authorId = req.user.id;
+  
+    try {
+        const ticketId = await createTicket(title, body, topicId, authorId);
+        res.status(201).json({ message: 'Ticket created!', ticketId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create ticket' });
+  }
+});
+
+//EDIT TICKET
+//CHECK WITH @Edhem image uploads
+//Add multer for Image Upload (npm install multer and set up storage)
+app.put('/ticket/:id', isLoggedIn, async (req, res) => {
+    const ticketId = req.params.id;
+    const { title, body } = req.body;
+    const newImageBuffer = req.file ? req.file.buffer : null; // If you're handling file uploads
+  
+    try {
+      await editTicket(ticketId, title, body, newImageBuffer);
+      res.json({ message: 'Ticket updated successfully!' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to update ticket' });
+    }
+});
+
+//DELETE TICKET
+app.delete('/ticket/:id', isLoggedIn, async (req, res) => {
+    const ticketId = req.params.id;
+  
+    try {
+        await deleteTicket(ticketId);
+        res.json({ message: 'Ticket deleted successfully!' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to delete ticket' });
+    }
+});
+
+//UPVOTE
+app.post('/ticket/:id/upvote', isLoggedIn, async (req, res) => {
+    await increaseUpvoteOnTicket(req.params.id);
+    res.json({ message: 'Upvoted!' });
+});
+
+//DOWNVOTE
+app.post('/ticket/:id/downvote', isLoggedIn, async (req, res) => {
+    await increaseDownvoteOnTicket(req.params.id);
+    res.json({ message: 'Downvoted!' });
+});
+
+//DECREASE UPVOTE
+app.post('/ticket/:id/unupvote', isLoggedIn, async (req, res) => {
+    await decreaseUpvoteOnTicket(req.params.id);
+    res.json({ message: 'Upvote removed!' });
+});
+
+//DECREASE DOWNVOTE
+app.post('/ticket/:id/undownvote', isLoggedIn, async (req, res) => {
+    await decreaseDownvoteOnTicket(req.params.id);
+    res.json({ message: 'Downvote removed!' });
+});
 
 //Error handling
 app.use((err, req, res, next) => {
