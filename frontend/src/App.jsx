@@ -1,35 +1,89 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Dashboard from './pages/Dashboard';
+import Account from './pages/Account';
+import SingleTicket from './pages/SingleTicket';
+import GoogleSignIn from './components/GoogleSignIn';
+import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if user is authenticated
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/api/auth/status', {
+          credentials: 'include', // Important for cookies
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setIsAuthenticated(data.isAuthenticated);
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error('Authentication check failed:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // Auth-protected route component
+  const ProtectedRoute = ({ children }) => {
+    if (isLoading) {
+      return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    }
+    
+    if (!isAuthenticated) {
+      return <Navigate to="/login" replace />;
+    }
+    
+    return children;
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <Router>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={<GoogleSignIn />} />
+        <Route path="/auth/callback" element={<Navigate to="/dashboard" replace />} />
+        
+        {/* Protected routes */}
+        <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/account" 
+          element={
+            <ProtectedRoute>
+              <Account />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/ticket/:ticketId" 
+          element={
+            <ProtectedRoute>
+              <SingleTicket />
+            </ProtectedRoute>
+          } 
+        />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;
