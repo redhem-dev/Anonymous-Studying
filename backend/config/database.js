@@ -1,18 +1,21 @@
 const sql = require('mysql2');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const pool = sql.createPool({
-    host: "127.0.0.1", //add new
-    user: "root", //add new
-    password: "szoboszlai", //add new
-    database: "classicmodels" //add new
+    host: process.env.DB_HOST, 
+    user: process.env.DB_USER, 
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME
 }).promise();
 
-// Wrap async code in a function
-async function run() {
-    const result = await pool.query("SELECT * FROM customers");
-    console.log(result[0]);
-}
 
-// Call the function
-run().catch(console.error);
+//  TESTING ONLY
+// async function run() {
+//     const result = await pool.query('SELECT * FROM users');
+//     console.log(result[0]);
+// }
+
+// run().catch(console.error);
+
+module.exports = pool;
