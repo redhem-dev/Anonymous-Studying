@@ -4,6 +4,7 @@ const User = require('../models/User');
 // Controller for authentication-related operations
 const authController = {
   // Check authentication status
+  // Tested, working
   getStatus: (req, res) => {
     if (req.isAuthenticated()) {
       res.json({ 
@@ -29,11 +30,13 @@ const authController = {
   },
 
   // Google authentication
+  // Tested, working
   googleAuth: passport.authenticate('google', { 
     scope: ['email', 'profile'] 
   }),
 
   // Google callback
+  // Tested, working
   googleCallback: [
     passport.authenticate('google', { 
       failureRedirect: 'http://localhost:5173/login',
