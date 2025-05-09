@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Dashboard from './pages/Dashboard';
 import Account from './pages/Account';
 import SingleTicket from './pages/SingleTicket';
+import SearchResults from './pages/SearchResults';
 import GoogleSignIn from './components/GoogleSignIn';
 import './App.css';
 
@@ -78,6 +79,14 @@ function App() {
           element={
             <ProtectedRoute>
               <SingleTicket />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/search" 
+          element={
+            <ProtectedRoute>
+              <SearchResults />
             </ProtectedRoute>
           } 
         />

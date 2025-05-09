@@ -2,69 +2,38 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import CreateTicketModal from '../components/CreateTicketModal';
+import useTickets from '../hooks/useTickets';
 
 const Dashboard = () => {
   // State for create ticket modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  
+  // Use our custom hook to fetch tickets
+  const { tickets, isLoading, error, refreshTickets } = useTickets();
+  
+  // Handle modal close and refresh tickets
+  const handleModalClose = () => {
+    setIsCreateModalOpen(false);
+    // Refresh tickets when modal closes to ensure new tickets are displayed
+    refreshTickets();
+  };
 
-  // Example data for tickets wall
+  // Old example data structure for reference - removed to use dynamic data from API instead
+  /* Example data structure:
   const tickets = [
     { 
       id: 1, 
       title: 'How to solve quadratic equations?', 
-      content: 'I\'m struggling with solving quadratic equations, especially when factoring doesn\'t work easily. Can someone explain the quadratic formula and when to use different methods?',
+      content: 'I\'m struggling with solving quadratic equations...',
       topic: 'Mathematics',
       upvotes: 42, 
       downvotes: 5,
       replies: 8, 
       author: 'mathwhiz',
       createdAt: '2025-04-15T14:30:00Z'
-    },
-    { 
-      id: 2, 
-      title: 'Understanding Big O notation', 
-      content: 'I\'m trying to understand time complexity and Big O notation for my algorithms class. Can someone explain the difference between O(n), O(n log n), and O(n²) with examples?',
-      topic: 'Computer Science',
-      upvotes: 38, 
-      downvotes: 2,
-      replies: 12, 
-      author: 'codemaster',
-      createdAt: '2025-04-16T09:15:00Z'
-    },
-    { 
-      id: 3, 
-      title: 'Newton\'s laws of motion explained', 
-      content: 'I need help understanding Newton\'s three laws of motion and how they relate to each other. Especially the third law about equal and opposite reactions - could someone provide real-world examples?',
-      topic: 'Physics',
-      upvotes: 35, 
-      downvotes: 3,
-      replies: 6, 
-      author: 'physicsgeek',
-      createdAt: '2025-04-17T11:45:00Z'
-    },
-    { 
-      id: 4, 
-      title: 'Tips for effective essay writing', 
-      content: 'I have a 2000-word essay due next week and I\'m struggling with structure and flow. Does anyone have tips for organizing thoughts and creating compelling arguments in academic writing?',
-      topic: 'Literature',
-      upvotes: 29, 
-      downvotes: 1,
-      replies: 15, 
-      author: 'essaywriter',
-      createdAt: '2025-04-17T16:20:00Z'
-    },
-    { 
-      id: 5, 
-      title: 'Help with organic chemistry nomenclature', 
-      content: 'I\'m confused about naming organic compounds, especially when there are multiple functional groups. Can someone explain the priority rules and provide some examples?',
-      topic: 'Chemistry',
-      upvotes: 22, 
-      downvotes: 0,
-      replies: 4, 
-      author: 'chemstudent',
-      createdAt: '2025-04-18T08:10:00Z'
-    },
+    }
   ];
+  */
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -90,26 +59,64 @@ const Dashboard = () => {
           </div>
         </div>
 
+
+        
+        {/* Loading state */}
+        {isLoading && (
+          <div className="flex justify-center my-10">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        )}
+        
+        {/* Error state */}
+        {error && (
+          <div className="bg-red-50 p-4 rounded-md">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{error}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tickets Wall */}
-        <div className="space-y-6">
-          {tickets.map((ticket) => (
-            <Link to={`/ticket/${ticket.id}`} key={ticket.id} className="block">
-              <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-300 cursor-pointer">
-                <div className="px-4 py-5 sm:px-6">
+        {!isLoading && !error && (
+          <div className="space-y-6">
+            {tickets.length === 0 ? (
+              <div className="text-center py-10">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No tickets found</h3>
+                <p className="mt-1 text-sm text-gray-500">Get started by creating a new ticket.</p>
+              </div>
+            ) : (
+              tickets.map((ticket) => (
+                <Link to={`/ticket/${ticket.id}`} key={ticket.id} className="block">
+                  <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-300 cursor-pointer">
+                    <div className="px-4 py-5 sm:px-6">
                   {/* Header with author and topic */}
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center">
                       <img
                         className="h-8 w-8 rounded-full mr-2 cursor-pointer hover:opacity-80"
-                        src={`https://ui-avatars.com/api/?name=${ticket.author}&background=random`}
-                        alt={`${ticket.author}'s avatar`}
+                        src={`https://ui-avatars.com/api/?name=${ticket.author_username || 'Anonymous'}&background=random`}
+                        alt={`${ticket.author_username || 'Anonymous'}'s avatar`}
                         onClick={(e) => {
                           e.preventDefault();
                           // In a real app, navigate to user profile
-                          console.log('Navigate to user profile:', ticket.author);
+                          console.log('Navigate to user profile:', ticket.author_username);
                         }}
                       />
-                      <span className="text-sm font-medium text-gray-700">{ticket.author}</span>
+                      <span className="text-sm font-medium text-gray-700">{ticket.author_username || 'Anonymous'}</span>
                     </div>
                     <span 
                       className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
@@ -119,7 +126,7 @@ const Dashboard = () => {
                         console.log('Filter by topic:', ticket.topic);
                       }}
                     >
-                      {ticket.topic}
+                      {ticket.topic_name || 'General'}
                     </span>
                   </div>
                   
@@ -130,7 +137,7 @@ const Dashboard = () => {
                   
                   {/* Content */}
                   <p className="text-sm text-gray-500 mb-4">
-                    {ticket.content}
+                    {ticket.body}
                   </p>
                   
                   {/* Footer with stats */}
@@ -146,7 +153,7 @@ const Dashboard = () => {
                       <svg className="h-5 w-5 mr-1 text-gray-400" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                         <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                       </svg>
-                      <span>{ticket.replies} replies</span>
+                      <span>Replies</span>
                     </div>
                     
                     <div className="flex items-center space-x-4">
@@ -181,15 +188,17 @@ const Dashboard = () => {
                   </div>
                 </div>
               </div>
-            </Link>
-          ))}
-        </div>
+                </Link>
+              ))
+            )}
+          </div>
+        )}
       </div>
       
       {/* Create Ticket Modal */}
       <CreateTicketModal 
         isOpen={isCreateModalOpen} 
-        onClose={() => setIsCreateModalOpen(false)} 
+        onClose={handleModalClose} 
       />
     </div>
   );

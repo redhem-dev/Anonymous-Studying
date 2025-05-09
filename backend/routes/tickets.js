@@ -14,6 +14,7 @@ const upload = multer({
 
 // Public routes
 router.get('/', ticketController.getAllTickets);
+router.get('/search', ticketController.searchTickets);
 router.get('/:id', ticketController.getTicketById);
 
 // Protected routes - require authentication

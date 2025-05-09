@@ -1,21 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import useAuth from '../hooks/useAuth';
+import useUserProfile from '../hooks/useUserProfile';
+import EditTicketModal from '../components/EditTicketModal';
 
 const Account = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('settings');
   const fileInputRef = useRef(null);
   
-  // Example user data
-  const [user, setUser] = useState({
-    username: 'johndoe',
-    reputation: 450,
-    joinDate: '2024-12-15',
+  // Use authentication hook for user data
+  const { user, getUserInitials } = useAuth();
+  const { userTickets, isLoading: isLoadingTickets, error: ticketsError, deleteTicket, editTicket } = useUserProfile();
+  
+  // Settings state
+  const [settings, setSettings] = useState({
     notificationsEnabled: true,
-    darkModeEnabled: false,
-    avatarUrl: 'https://ui-avatars.com/api/?name=johndoe&background=random&size=128'
+    darkModeEnabled: false
   });
+  
+  // Edit ticket modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [ticketToEdit, setTicketToEdit] = useState(null);
   
   // Example favorite tickets
   const favoriteTickets = [
@@ -61,23 +68,10 @@ const Account = () => {
     }
   ];
   
-  // Handle avatar upload
-  const handleAvatarUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      // In a real app, you would upload the file to your server
-      // For now, we'll just create a local URL to display the image
-      const imageUrl = URL.createObjectURL(file);
-      setUser({
-        ...user,
-        avatarUrl: imageUrl
-      });
-    }
-  };
-  
-  // Trigger file input click
-  const triggerFileInput = () => {
-    fileInputRef.current.click();
+  // Handle edit ticket callback
+  const handleTicketEdit = async (ticketId, formData) => {
+    const success = await editTicket(ticketId, formData);
+    return success;
   };
   
   // Parse the tab from URL query parameters
@@ -99,17 +93,17 @@ const Account = () => {
         {/* User info header */}
         <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
           <div className="px-4 py-5 sm:px-6 flex items-center">
-            <img
-              className="h-16 w-16 rounded-full mr-4 object-cover"
-              src={user.avatarUrl}
-              alt="User avatar"
-            />
+            <div 
+              className="h-16 w-16 rounded-full mr-4 flex items-center justify-center bg-gray-800 text-white text-xl font-bold"
+            >
+              {getUserInitials()}
+            </div>
             <div>
               <h3 className="text-lg leading-6 font-medium text-gray-900">
-                {user.username}
+                {user?.username || 'Anonymous User'}
               </h3>
               <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                {user.reputation} reputation points
+                {user?.reputation || 0} reputation points
               </p>
             </div>
           </div>
@@ -164,29 +158,15 @@ const Account = () => {
                   <h4 className="text-base font-medium text-gray-900 mb-3">Profile Picture</h4>
                   <div className="flex items-center">
                     <div className="mr-4">
-                      <img
-                        src={user.avatarUrl}
-                        alt="User avatar"
-                        className="h-24 w-24 rounded-full object-cover border-2 border-gray-200"
-                      />
+                      <div 
+                        className="h-24 w-24 rounded-full flex items-center justify-center bg-gray-800 text-white text-3xl font-bold border-2 border-gray-200"
+                      >
+                        {getUserInitials()}
+                      </div>
                     </div>
                     <div>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleAvatarUpload}
-                      />
-                      <button
-                        type="button"
-                        onClick={triggerFileInput}
-                        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
-                      >
-                        Change Avatar
-                      </button>
-                      <p className="mt-1 text-xs text-gray-500">
-                        JPG, PNG or GIF. Maximum size 2MB.
+                      <p className="text-sm text-gray-500">
+                        Your avatar is automatically generated from your username.
                       </p>
                     </div>
                   </div>
@@ -202,7 +182,8 @@ const Account = () => {
                     name="username"
                     id="username"
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    defaultValue={user.username}
+                    value={user?.username || ''}
+                    readOnly
                   />
                 </div>
                 
@@ -213,7 +194,8 @@ const Account = () => {
                     name="notifications"
                     type="checkbox"
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
-                    defaultChecked={user.notificationsEnabled}
+                    checked={settings.notificationsEnabled}
+                    onChange={() => setSettings(prev => ({ ...prev, notificationsEnabled: !prev.notificationsEnabled }))}
                   />
                   <label htmlFor="notifications" className="ml-2 block text-sm text-gray-700 cursor-pointer">
                     Enable notifications
@@ -227,7 +209,8 @@ const Account = () => {
                     name="darkMode"
                     type="checkbox"
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
-                    defaultChecked={user.darkModeEnabled}
+                    checked={settings.darkModeEnabled}
+                    onChange={() => setSettings(prev => ({ ...prev, darkModeEnabled: !prev.darkModeEnabled }))}
                   />
                   <label htmlFor="darkMode" className="ml-2 block text-sm text-gray-700 cursor-pointer">
                     Enable dark mode
@@ -282,25 +265,83 @@ const Account = () => {
             <div className="p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-6">Your Previous Tickets</h3>
               
-              {previousTickets.length > 0 ? (
+              {isLoadingTickets ? (
+                <div className="flex justify-center my-10">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+              ) : ticketsError ? (
+                <div className="bg-red-50 p-4 rounded-md">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">Error</h3>
+                      <div className="mt-2 text-sm text-red-700">
+                        <p>{ticketsError}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : userTickets.length > 0 ? (
                 <ul className="divide-y divide-gray-200">
-                  {previousTickets.map((ticket) => (
-                    <li key={ticket.id} className="py-4 hover:bg-gray-50 cursor-pointer">
+                  {userTickets.map((ticket) => (
+                    <li key={ticket.id} className="py-4 hover:bg-gray-50">
                       <div className="flex justify-between">
                         <div className="flex-1">
-                          <h4 className="text-base font-medium text-blue-600">{ticket.title}</h4>
+                          <Link to={`/ticket/${ticket.id}`} className="text-base font-medium text-blue-600 hover:underline">
+                            {ticket.title}
+                          </Link>
                           <p className="mt-1 text-sm text-gray-500">
-                            {ticket.topic} • 
+                            {ticket.topic_name || 'General'} • 
                             <span className={`ml-1 ${
-                              ticket.status === 'open' ? 'text-green-600' : 'text-gray-600'
+                              ticket.status === 'closed' ? 'text-gray-600' : 'text-green-600'
                             }`}>
-                              {ticket.status}
+                              {ticket.status || 'open'}
+                            </span>
+                            <span className="ml-2 text-xs text-gray-400">
+                              {new Date(ticket.created_at).toLocaleDateString()}
                             </span>
                           </p>
                         </div>
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span>{ticket.upvotes} upvotes</span>
-                          <span>{ticket.replies} replies</span>
+                        
+                        <div className="flex items-center space-x-2">
+                          {/* View count and replies */}
+                          <div className="flex items-center space-x-4 text-sm text-gray-500 mr-4">
+                            <span>{ticket.upvotes || 0} upvotes</span>
+                            <span>{ticket.reply_count || 0} replies</span>
+                          </div>
+                          
+                          {/* Edit button */}
+                          <button 
+                            onClick={() => {
+                              setTicketToEdit(ticket);
+                              setIsEditModalOpen(true);
+                            }}
+                            className="p-1 text-gray-500 hover:text-blue-500 focus:outline-none"
+                            title="Edit ticket"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          
+                          {/* Delete button */}
+                          <button 
+                            onClick={() => {
+                              if (window.confirm('Are you sure you want to delete this ticket?')) {
+                                deleteTicket(ticket.id);
+                              }
+                            }}
+                            className="p-1 text-gray-500 hover:text-red-500 focus:outline-none"
+                            title="Delete ticket"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
                     </li>
@@ -313,6 +354,16 @@ const Account = () => {
           )}
         </div>
       </div>
+      
+      {/* Edit Ticket Modal */}
+      {isEditModalOpen && (
+        <EditTicketModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          ticket={ticketToEdit}
+          onSave={editTicket}
+        />
+      )}
     </div>
   );
 };

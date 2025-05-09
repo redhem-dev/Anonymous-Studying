@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import useCreateTicket from '../hooks/useCreateTicket';
+import useTickets from '../hooks/useTickets';
 
 const CreateTicketModal = ({ isOpen, onClose }) => {
   // Example topics for the dropdown
@@ -18,21 +20,42 @@ const CreateTicketModal = ({ isOpen, onClose }) => {
   const [selectedTopic, setSelectedTopic] = useState('');
   const [tags, setTags] = useState('');
 
+  // Use the ticket creation hook
+  const { createTicket, isLoading, error, success, resetState } = useCreateTicket();
+  
+  // Use the tickets hook to refresh tickets after creation
+  const { refreshTickets } = useTickets();
+  
+  // Reset success and error states when modal is opened/closed
+  useEffect(() => {
+    resetState();
+  }, [isOpen, resetState]);
+  
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Here you would typically send the data to your backend
-    console.log({
-      title,
-      content,
-      topic: selectedTopic,
-      tags: tags.split(',').map(tag => tag.trim())
-    });
-    
-    // Reset form and close modal
-    resetForm();
-    onClose();
+    try {
+      await createTicket({
+        title,
+        content,
+        topicId: selectedTopic,
+        tags
+      });
+      
+      // Refresh the tickets list to include the new ticket
+      await refreshTickets();
+      
+      // On successful creation, reset form and close modal after a short delay to show success message
+      setTimeout(() => {
+        resetForm();
+        onClose();
+      }, 1500);
+      
+    } catch (err) {
+      // Error is handled by the hook and displayed in the UI
+      console.error('Error in form submission:', err);
+    }
   };
 
   // Reset form fields
@@ -68,6 +91,38 @@ const CreateTicketModal = ({ isOpen, onClose }) => {
                 <h3 className="text-lg font-semibold leading-6 text-gray-900 mb-4">
                   Create New Ticket
                 </h3>
+                
+                {/* Success message */}
+                {success && (
+                  <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-green-700">Ticket created successfully!</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Error message */}
+                {error && (
+                  <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-red-700">{error}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 <form onSubmit={handleSubmit} className="mt-2">
                   {/* Title field */}
@@ -145,9 +200,18 @@ const CreateTicketModal = ({ isOpen, onClose }) => {
                   <div className="px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 mt-4 -mx-4 -mb-4">
                     <button
                       type="submit"
-                      className="inline-flex w-full justify-center rounded-md bg-gray-800 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-700 sm:ml-3 sm:w-auto"
+                      className="inline-flex w-full justify-center rounded-md bg-gray-800 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-700 sm:ml-3 sm:w-auto disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      disabled={isLoading}
                     >
-                      Create Ticket
+                      {isLoading ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Creating...
+                        </>
+                      ) : "Create Ticket"}
                     </button>
                     <button
                       type="button"

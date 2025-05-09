@@ -1,12 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import Sidebar from './Sidebar';
 import NotificationsPopup from './NotificationsPopup';
+import useAuth from '../hooks/useAuth';
 
 const Navbar = () => {
+  // Use auth hook for user data and avatar display
+  const { user, getUserInitials } = useAuth();
+  
   // Example notification count
   const notificationCount = 3;
+  
+  // State for search query
+  const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
   
   // State for sidebar visibility
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -16,6 +24,15 @@ const Navbar = () => {
   
   // Ref for notifications popup container
   const notificationsRef = useRef(null);
+  
+  // Handle search submission
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
+    }
+  };
   
   // Handle clicks outside of notifications popup to close it
   useEffect(() => {
@@ -47,18 +64,23 @@ const Navbar = () => {
         
         {/* Search bar in the middle */}
         <div className="max-w-md w-full">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-              </svg>
+          <form onSubmit={handleSearch}>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Search for topics, questions, or tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button type="submit" className="hidden">Search</button>
             </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder="Search for topics, questions, or tags..."
-            />
-          </div>
+          </form>
         </div>
         
         {/* Right side icons */}
@@ -92,11 +114,9 @@ const Navbar = () => {
               className="flex text-sm border-2 border-transparent rounded-full focus:outline-none focus:border-gray-300 transition duration-150 ease-in-out cursor-pointer hover:opacity-80"
               onClick={() => setSidebarOpen(true)}
             >
-              <img
-                className="h-8 w-8 rounded-full object-cover"
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                alt="User avatar"
-              />
+              <div className="h-8 w-8 rounded-full flex items-center justify-center bg-gray-800 text-white text-xs font-bold">
+                {getUserInitials()}
+              </div>
             </button>
           </div>
         </div>

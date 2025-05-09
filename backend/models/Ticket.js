@@ -2,8 +2,50 @@ const pool = require('../config/database');
 
 class Ticket {
     static async getAll() {
-        const [rows] = await pool.query("SELECT * FROM tickets");
+        const [rows] = await pool.query(`
+            SELECT t.*, u.username as author_username, tp.name as topic_name 
+            FROM tickets t
+            LEFT JOIN users u ON t.author_id = u.id
+            LEFT JOIN topics tp ON t.topic_id = tp.id
+            ORDER BY t.created_at DESC
+        `);
         return rows;
+    }
+    
+    static async getAllByUserId(userId) {
+        const [rows] = await pool.query(`
+            SELECT t.*, u.username as author_username, tp.name as topic_name,
+            (SELECT COUNT(*) FROM replies r WHERE r.ticket_id = t.id) as reply_count
+            FROM tickets t
+            LEFT JOIN users u ON t.author_id = u.id
+            LEFT JOIN topics tp ON t.topic_id = tp.id
+            WHERE t.author_id = ?
+            ORDER BY t.created_at DESC
+        `, [userId]);
+        return rows;
+    }
+    
+    static async searchByTitle(searchTerm) {
+        const searchQuery = `%${searchTerm}%`;
+        
+        // Search for tickets that match title, body, topic name, or tags
+        const [ticketRows] = await pool.query(`
+            SELECT DISTINCT t.*, u.username as author_username, tp.name as topic_name 
+            FROM tickets t
+            LEFT JOIN users u ON t.author_id = u.id
+            LEFT JOIN topics tp ON t.topic_id = tp.id
+            LEFT JOIN ticket_tags tt ON t.id = tt.ticket_id
+            LEFT JOIN tags tag ON tt.tag_id = tag.id
+            WHERE t.title LIKE ?
+            OR t.body LIKE ?
+            OR tp.name LIKE ?
+            OR tag.name LIKE ?
+            ORDER BY t.created_at DESC
+        `, [searchQuery, searchQuery, searchQuery, searchQuery]);
+        
+        return {
+            tickets: ticketRows
+        };
     }
 
     static async findById(id) {

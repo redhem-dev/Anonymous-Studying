@@ -152,9 +152,29 @@ const ticketController = {
   // Get all tickets by user ID
   getUserTickets: async (req, res) => {
     try {
-      const userId = req.user.id;
-      const tickets = await Ticket.getAllByUserId(userId);
-      res.json(tickets);
+      console.log('User object in request:', req.user);
+      const userId = req.user?.id;
+      
+      // Also check query parameter as a backup (for debugging)
+      const queryUserId = req.query.uid;
+      console.log('User ID from session:', userId, 'Type:', typeof userId);
+      console.log('User ID from query:', queryUserId, 'Type:', typeof queryUserId);
+      
+      // Use either source for the ID
+      const finalUserId = userId || queryUserId;
+      
+      // Get a sample of tickets to check if any exist
+      const pool = require('../config/database');
+      const [allTickets] = await pool.query('SELECT id, author_id FROM tickets LIMIT 10');
+      console.log('Sample of tickets in DB:', allTickets);
+      
+      const tickets = await Ticket.getAllByUserId(finalUserId);
+      console.log('Tickets returned for user:', tickets.length);
+      
+      res.json({
+        userId: finalUserId,
+        tickets
+      });
     } catch (error) {
       console.error('Error fetching user tickets:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -195,6 +215,23 @@ const ticketController = {
       res.json({ message: 'Ticket removed from favorites successfully' });
     } catch (error) {
       console.error('Error removing from favorites:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+  
+  // Search tickets and topics by query string
+  searchTickets: async (req, res) => {
+    try {
+      const { query } = req.query;
+      
+      if (!query || query.trim() === '') {
+        return res.status(400).json({ error: 'Search query is required' });
+      }
+      
+      const results = await Ticket.searchByTitle(query);
+      res.json(results);
+    } catch (error) {
+      console.error('Error searching tickets:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   }

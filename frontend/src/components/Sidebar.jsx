@@ -1,12 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import useAuth from '../hooks/useAuth';
 
 const Sidebar = ({ isOpen, onClose }) => {
-  // Example user data
-  const user = {
-    username: 'johndoe',
-    reputation: 450
-  };
+  // Use authentication hook for user data and logout functionality
+  const { user, isLoading, getUserInitials, logout } = useAuth();
 
   return (
     <>
@@ -37,23 +35,18 @@ const Sidebar = ({ isOpen, onClose }) => {
             
             {/* User info */}
             <div className="flex flex-col items-center mt-5 mb-8">
-              <img
-                className="h-20 w-20 rounded-full object-cover mb-3"
-                src={`https://ui-avatars.com/api/?name=${user.username}&background=random&size=128`}
-                alt="User avatar"
-              />
-              <h3 className="text-xl font-medium text-gray-900">{user.username}</h3>
-              <p className="text-sm text-gray-500">{user.reputation} reputation points</p>
+              <div 
+                className="h-20 w-20 rounded-full flex items-center justify-center bg-gray-800 text-white text-3xl font-bold mb-3"
+              >
+                {getUserInitials()}
+              </div>
+              <h3 className="text-xl font-medium text-gray-900">{isLoading ? 'Loading...' : user?.username || 'Anonymous'}</h3>
+              <p className="text-sm text-gray-500">{isLoading ? '...' : (user?.reputation || 0)} reputation points</p>
             </div>
             
             {/* Navigation links */}
             <nav className="mt-8">
               <ul className="space-y-4">
-                <li>
-                  <span className="block px-4 py-2 text-gray-700 cursor-default">
-                    {user.username}
-                  </span>
-                </li>
                 <li>
                   <Link 
                     to="/account?tab=settings" 
@@ -86,7 +79,10 @@ const Sidebar = ({ isOpen, onClose }) => {
             
             {/* Logout button */}
             <div className="mt-auto pt-8">
-              <button className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 cursor-pointer">
+              <button 
+                className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 cursor-pointer"
+                onClick={logout}
+              >
                 Logout
               </button>
             </div>

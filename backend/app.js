@@ -7,6 +7,7 @@ require('./config/auth');
 
 // Import routes
 const authRoutes = require('./routes/auth');
+const ticketRoutes = require('./routes/tickets');
 
 // Middleware to check if user is authenticated
 function isLoggedIn(req, res, next) {
@@ -68,8 +69,8 @@ app.get('/protected', isLoggedIn, (req, res) => {
     });
 });
 
-// API routes for tickets, replies, etc. would go here
-// app.use('/api/tickets', ticketRoutes);
+// API routes for tickets, replies, etc.
+app.use('/api/tickets', ticketRoutes);
 // app.use('/api/replies', replyRoutes);
 
 // Start the server
