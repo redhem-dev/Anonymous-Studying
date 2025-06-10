@@ -49,7 +49,13 @@ class Ticket {
     }
 
     static async findById(id) {
-        const [rows] = await pool.query("SELECT * FROM tickets WHERE id = ?", [id]);
+        const [rows] = await pool.query(`
+            SELECT t.*, u.username as author_username, tp.name as topic_name 
+            FROM tickets t
+            LEFT JOIN users u ON t.author_id = u.id
+            LEFT JOIN topics tp ON t.topic_id = tp.id
+            WHERE t.id = ?
+        `, [id]);
         return rows[0];
     }
 

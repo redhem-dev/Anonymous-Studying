@@ -13,9 +13,10 @@ const Sidebar = ({ isOpen, onClose }) => {
         className={`fixed inset-0 z-50 transition-opacity duration-300 ease-in-out ${
           isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
+        onClick={onClose}
       >
         {/* Sidebar panel */}
-        <div 
+        <div onClick={e => e.stopPropagation()} 
           className={`fixed top-0 right-0 w-64 h-full bg-white shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${
             isOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
@@ -81,7 +82,18 @@ const Sidebar = ({ isOpen, onClose }) => {
             <div className="mt-auto pt-8">
               <button 
                 className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 cursor-pointer"
-                onClick={logout}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Call logout explicitly and handle any errors
+                  try {
+                    logout();
+                  } catch (err) {
+                    console.error('Logout failed:', err);
+                    // Force redirect as fallback
+                    window.location.href = '/login';
+                  }
+                }}
               >
                 Logout
               </button>

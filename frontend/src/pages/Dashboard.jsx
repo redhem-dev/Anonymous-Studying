@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import CreateTicketModal from '../components/CreateTicketModal';
+import FavoriteButton from '../components/FavoriteButton';
 import useTickets from '../hooks/useTickets';
 
 const Dashboard = () => {
@@ -118,16 +119,23 @@ const Dashboard = () => {
                       />
                       <span className="text-sm font-medium text-gray-700">{ticket.author_username || 'Anonymous'}</span>
                     </div>
-                    <span 
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        // In a real app, filter by topic
-                        console.log('Filter by topic:', ticket.topic);
-                      }}
-                    >
-                      {ticket.topic_name || 'General'}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <FavoriteButton 
+                        ticketId={ticket.id} 
+                        size="lg" 
+                        className="mr-2"
+                      />
+                      <span 
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          // In a real app, filter by topic
+                          console.log('Filter by topic:', ticket.topic);
+                        }}
+                      >
+                        {ticket.topic_name || 'General'}
+                      </span>
+                    </div>
                   </div>
                   
                   {/* Title */}

@@ -12,9 +12,14 @@ router.get('/callback', authController.googleCallback);
 router.get('/status', authController.getStatus);
 
 // Logout route
-router.get('/logout', authController.logout);
+router.post('/logout', authController.logout);
 
 // Update username route
 router.post('/update-username', authController.updateUsername);
+
+// New user registration and checking endpoints
+router.post('/check-user', authController.checkUser);
+router.post('/check-username', authController.checkUsername);
+router.post('/register', authController.register);
 
 module.exports = router;

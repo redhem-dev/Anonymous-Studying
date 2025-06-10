@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import useAuth from '../hooks/useAuth';
 import useUserProfile from '../hooks/useUserProfile';
 import EditTicketModal from '../components/EditTicketModal';
+import FavoriteButton from '../components/FavoriteButton';
 
 const Account = () => {
   const location = useLocation();
@@ -11,7 +12,7 @@ const Account = () => {
   const fileInputRef = useRef(null);
   
   // Use authentication hook for user data
-  const { user, getUserInitials } = useAuth();
+  const { user, getUserInitials, isAuthenticated } = useAuth();
   const { userTickets, isLoading: isLoadingTickets, error: ticketsError, deleteTicket, editTicket } = useUserProfile();
   
   // Settings state
@@ -24,27 +25,48 @@ const Account = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [ticketToEdit, setTicketToEdit] = useState(null);
   
-  // Example favorite tickets
-  const favoriteTickets = [
-    { 
-      id: 1, 
-      title: 'How to solve quadratic equations?', 
-      topic: 'Mathematics',
-      upvotes: 42, 
-      downvotes: 5,
-      replies: 8, 
-      author: 'mathwhiz'
-    },
-    { 
-      id: 2, 
-      title: 'Understanding Big O notation', 
-      topic: 'Computer Science',
-      upvotes: 38, 
-      downvotes: 2,
-      replies: 12, 
-      author: 'codemaster'
+  // Favorites state
+  const [favoriteTickets, setFavoriteTickets] = useState([]);
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
+  const [favoritesError, setFavoritesError] = useState(null);
+  
+  // Function to handle favorite removal
+  const handleFavoriteChange = (ticketId, isFavorite) => {
+    if (!isFavorite) {
+      // Remove ticket from favorites list when unfavorited
+      setFavoriteTickets(prevTickets => prevTickets.filter(ticket => ticket.id !== ticketId));
     }
-  ];
+  };
+  
+  // Fetch user's favorites
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!isAuthenticated) return;
+      
+      try {
+        setIsLoadingFavorites(true);
+        setFavoritesError(null);
+        
+        const response = await fetch('http://localhost:3000/api/favorites', {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch favorites');
+        }
+        
+        const data = await response.json();
+        setFavoriteTickets(data);
+      } catch (error) {
+        console.error('Error fetching favorites:', error);
+        setFavoritesError(error.message);
+      } finally {
+        setIsLoadingFavorites(false);
+      }
+    };
+    
+    fetchFavorites();
+  }, [isAuthenticated]);
   
   // Example previous tickets
   const previousTickets = [
@@ -235,20 +257,51 @@ const Account = () => {
             <div className="p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-6">Favorite Tickets</h3>
               
-              {favoriteTickets.length > 0 ? (
+              {isLoadingFavorites ? (
+                <div className="flex justify-center my-10">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+              ) : favoritesError ? (
+                <div className="bg-red-50 p-4 rounded-md">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">Error</h3>
+                      <div className="mt-2 text-sm text-red-700">
+                        <p>{favoritesError}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : favoriteTickets.length > 0 ? (
                 <ul className="divide-y divide-gray-200">
                   {favoriteTickets.map((ticket) => (
-                    <li key={ticket.id} className="py-4 hover:bg-gray-50 cursor-pointer">
-                      <div className="flex justify-between">
+                    <li key={ticket.id} className="py-4 hover:bg-gray-50">
+                      <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <h4 className="text-base font-medium text-blue-600">{ticket.title}</h4>
+                          <Link to={`/ticket/${ticket.id}`} className="text-base font-medium text-blue-600 hover:underline">
+                            {ticket.title}
+                          </Link>
                           <p className="mt-1 text-sm text-gray-500">
-                            By {ticket.author} • {ticket.topic}
+                            By {ticket.author_username} • {ticket.topic_name || 'General'}
+                            <span className="ml-2 text-xs text-gray-400">
+                              {new Date(ticket.created_at).toLocaleDateString()}
+                            </span>
                           </p>
+                          <div className="flex items-center space-x-4 text-sm text-gray-500 mt-2">
+                            <span>{ticket.upvotes || 0} upvotes</span>
+                            <span>{ticket.reply_count || 0} replies</span>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span>{ticket.upvotes} upvotes</span>
-                          <span>{ticket.replies} replies</span>
+                        <div className="flex space-x-2">
+                          <FavoriteButton 
+                            ticketId={ticket.id} 
+                            onFavoriteChange={(isFavorite) => handleFavoriteChange(ticket.id, isFavorite)}
+                          />
                         </div>
                       </div>
                     </li>

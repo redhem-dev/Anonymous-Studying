@@ -8,6 +8,8 @@ require('./config/auth');
 // Import routes
 const authRoutes = require('./routes/auth');
 const ticketRoutes = require('./routes/tickets');
+const userRoutes = require('./routes/users');
+const favoriteRoutes = require('./routes/favorites');
 
 // Middleware to check if user is authenticated
 function isLoggedIn(req, res, next) {
@@ -29,11 +31,15 @@ app.use(session({
     secret: process.env.SESSION_SECRET, 
     resave: false, 
     saveUninitialized: false,
+    name: 'connect.sid', // Be explicit about the cookie name
     cookie: {
         secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax', // Allow cross-site requests with top-level navigation
+        path: '/' // Explicit path setting
+    },
+    unset: 'destroy' // Ensure complete removal on req.session.destroy()
 }));
 
 // Initialize Passport
@@ -71,6 +77,8 @@ app.get('/protected', isLoggedIn, (req, res) => {
 
 // API routes for tickets, replies, etc.
 app.use('/api/tickets', ticketRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/favorites', favoriteRoutes);
 // app.use('/api/replies', replyRoutes);
 
 // Start the server

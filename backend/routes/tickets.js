@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ticketController = require('../controllers/ticketController');
+const replyController = require('../controllers/replyController');
 const { isLoggedIn } = require('../middleware/auth');
 const multer = require('multer');
 
@@ -33,5 +34,17 @@ router.get('/user/tickets', isLoggedIn, ticketController.getUserTickets);
 router.get('/user/favorites', isLoggedIn, ticketController.getUserFavorites);
 router.post('/:id/favorite', isLoggedIn, ticketController.addToFavorites);
 router.delete('/:id/favorite', isLoggedIn, ticketController.removeFromFavorites);
+
+// Reply routes
+router.get('/:ticketId/replies', replyController.getAllReplies);
+router.post('/:ticketId/replies', isLoggedIn, upload.single('image'), replyController.createReply);
+router.put('/:ticketId/replies/:replyId', isLoggedIn, upload.single('image'), replyController.updateReply);
+router.delete('/:ticketId/replies/:replyId', isLoggedIn, replyController.deleteReply);
+
+// Reply voting routes
+router.post('/:ticketId/replies/:replyId/upvote', isLoggedIn, replyController.upvoteReply);
+router.delete('/:ticketId/replies/:replyId/upvote', isLoggedIn, replyController.removeUpvoteReply);
+router.post('/:ticketId/replies/:replyId/downvote', isLoggedIn, replyController.downvoteReply);
+router.delete('/:ticketId/replies/:replyId/downvote', isLoggedIn, replyController.removeDownvoteReply);
 
 module.exports = router;
