@@ -11,7 +11,10 @@ class Reply {
 
     static async getAllByTicketId(ticketId) {
         const [rows] = await pool.query(
-            'SELECT * FROM replies WHERE ticket_id = ?',
+            `SELECT r.*, u.username as author_username 
+            FROM replies r
+            LEFT JOIN users u ON r.author_id = u.id
+            WHERE r.ticket_id = ?`,
             [ticketId]
         );
         return rows;

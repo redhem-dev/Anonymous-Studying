@@ -1,4 +1,5 @@
 const Ticket = require('../models/Ticket');
+const Vote = require('../models/Vote');
 
 const ticketController = {
   // Get all tickets
@@ -101,12 +102,26 @@ const ticketController = {
     }
   },
 
+  // Get user's votes for all tickets
+  getUserVotes: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const votes = await Vote.getUserVotesForTickets(userId);
+      res.json(votes);
+    } catch (error) {
+      console.error('Error fetching user votes:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
   // Upvote a ticket
   upvoteTicket: async (req, res) => {
     try {
       const ticketId = req.params.id;
-      await Ticket.increaseUpvote(ticketId);
-      res.json({ message: 'Ticket upvoted successfully' });
+      const userId = req.user.id;
+      
+      const result = await Vote.addTicketVote(userId, ticketId, 'upvote');
+      res.json(result);
     } catch (error) {
       console.error('Error upvoting ticket:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -117,8 +132,10 @@ const ticketController = {
   removeUpvoteTicket: async (req, res) => {
     try {
       const ticketId = req.params.id;
-      await Ticket.decreaseUpvote(ticketId);
-      res.json({ message: 'Upvote removed successfully' });
+      const userId = req.user.id;
+      
+      const result = await Vote.removeTicketVote(userId, ticketId);
+      res.json(result);
     } catch (error) {
       console.error('Error removing upvote:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -129,8 +146,10 @@ const ticketController = {
   downvoteTicket: async (req, res) => {
     try {
       const ticketId = req.params.id;
-      await Ticket.increaseDownvote(ticketId);
-      res.json({ message: 'Ticket downvoted successfully' });
+      const userId = req.user.id;
+      
+      const result = await Vote.addTicketVote(userId, ticketId, 'downvote');
+      res.json(result);
     } catch (error) {
       console.error('Error downvoting ticket:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -141,8 +160,10 @@ const ticketController = {
   removeDownvoteTicket: async (req, res) => {
     try {
       const ticketId = req.params.id;
-      await Ticket.decreaseDownvote(ticketId);
-      res.json({ message: 'Downvote removed successfully' });
+      const userId = req.user.id;
+      
+      const result = await Vote.removeTicketVote(userId, ticketId);
+      res.json(result);
     } catch (error) {
       console.error('Error removing downvote:', error);
       res.status(500).json({ error: 'Internal server error' });

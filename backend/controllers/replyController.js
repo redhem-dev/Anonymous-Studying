@@ -1,5 +1,6 @@
 const Reply = require('../models/Reply');
 const Ticket = require('../models/Ticket');
+const Vote = require('../models/Vote');
 
 const replyController = {
   // Get all replies for a ticket
@@ -93,12 +94,26 @@ const replyController = {
     }
   },
 
+  // Get user's votes for replies
+  getUserReplyVotes: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const votes = await Vote.getUserVotesForReplies(userId);
+      res.json(votes);
+    } catch (error) {
+      console.error('Error fetching user reply votes:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
   // Upvote a reply
   upvoteReply: async (req, res) => {
     try {
       const replyId = req.params.replyId;
-      await Reply.increaseUpvote(replyId);
-      res.json({ message: 'Reply upvoted successfully' });
+      const userId = req.user.id;
+      
+      const result = await Vote.addReplyVote(userId, replyId, 'upvote');
+      res.json(result);
     } catch (error) {
       console.error('Error upvoting reply:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -109,8 +124,10 @@ const replyController = {
   removeUpvoteReply: async (req, res) => {
     try {
       const replyId = req.params.replyId;
-      await Reply.decreaseUpvote(replyId);
-      res.json({ message: 'Upvote removed successfully' });
+      const userId = req.user.id;
+      
+      const result = await Vote.removeReplyVote(userId, replyId);
+      res.json(result);
     } catch (error) {
       console.error('Error removing upvote:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -121,8 +138,10 @@ const replyController = {
   downvoteReply: async (req, res) => {
     try {
       const replyId = req.params.replyId;
-      await Reply.increaseDownvote(replyId);
-      res.json({ message: 'Reply downvoted successfully' });
+      const userId = req.user.id;
+      
+      const result = await Vote.addReplyVote(userId, replyId, 'downvote');
+      res.json(result);
     } catch (error) {
       console.error('Error downvoting reply:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -133,13 +152,50 @@ const replyController = {
   removeDownvoteReply: async (req, res) => {
     try {
       const replyId = req.params.replyId;
-      await Reply.decreaseDownvote(replyId);
-      res.json({ message: 'Downvote removed successfully' });
+      const userId = req.user.id;
+      
+      const result = await Vote.removeReplyVote(userId, replyId);
+      res.json(result);
     } catch (error) {
       console.error('Error removing downvote:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
-  }
+  },
+
+  // Mark a reply as the accepted answer for a ticket
+  acceptReply: async (req, res) => {
+    try {
+      const { ticketId, replyId } = req.params;
+      const userId = req.user.id;
+      
+      // First, verify that the user is the owner of the ticket
+      const [tickets] = await pool.execute(
+        'SELECT * FROM tickets WHERE id = ? AND user_id = ?',
+        [ticketId, userId]
+      );
+      
+      if (tickets.length === 0) {
+        return res.status(403).json({ error: 'You can only accept answers for your own tickets' });
+      }
+      
+      // Mark the reply as accepted
+      await pool.execute(
+        'UPDATE replies SET is_accepted = 1 WHERE id = ? AND ticket_id = ?',
+        [replyId, ticketId]
+      );
+      
+      // Mark the ticket as resolved
+      await pool.execute(
+        'UPDATE tickets SET is_resolved = 1 WHERE id = ?',
+        [ticketId]
+      );
+      
+      res.json({ success: true, message: 'Reply accepted as answer' });
+    } catch (error) {
+      console.error('Error accepting reply:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
 };
 
 module.exports = replyController;

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FavoriteButton from '../components/FavoriteButton';
+import VoteButtons from '../components/VoteButtons';
+import useAuth from '../hooks/useAuth';
+import axios from 'axios';
 
 const SingleTicket = () => {
   const { ticketId } = useParams();
@@ -10,8 +13,12 @@ const SingleTicket = () => {
   const [replies, setReplies] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // Fetch ticket data
+  const [replyError, setReplyError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { isAuthenticated, user } = useAuth();
+  const [ticketVotes, setTicketVotes] = useState({});
+  const [replyVotes, setReplyVotes] = useState({});
+
   useEffect(() => {
     const fetchTicketData = async () => {
       try {
@@ -41,6 +48,34 @@ const SingleTicket = () => {
         
         const repliesData = await repliesResponse.json();
         setReplies(repliesData);
+
+        // If user is authenticated, fetch their votes
+        if (isAuthenticated) {
+          try {
+            // Fetch ticket votes
+            const ticketVotesResponse = await fetch('http://localhost:3000/api/tickets/user/votes', {
+              credentials: 'include'
+            });
+            const ticketVotesData = await ticketVotesResponse.json();
+            setTicketVotes(ticketVotesData);
+            
+            // Fetch reply votes from our new endpoint
+            const replyVotesResponse = await fetch('http://localhost:3000/api/tickets/user/reply-votes', {
+              credentials: 'include'
+            });
+            const replyVotesData = await replyVotesResponse.json();
+            setReplyVotes(replyVotesData);
+          } catch (voteError) {
+            console.error('Error fetching user votes:', voteError);
+            // Initialize with empty objects if there's an error
+            setTicketVotes({});
+            setReplyVotes({});
+          }
+        } else {
+          // Reset votes when not authenticated
+          setTicketVotes({});
+          setReplyVotes({});
+        }
       } catch (err) {
         console.error('Error fetching ticket data:', err);
         setError(err.message);
@@ -75,21 +110,105 @@ const SingleTicket = () => {
     };
     
     fetchTicketData();
-  }, [ticketId]);
+  }, [ticketId, isAuthenticated]);
   
   // Handle reply submission
-  const handleSubmitReply = (e) => {
+  const handleSubmitReply = async (e) => {
     e.preventDefault();
-    // In a real app, you would send this to your backend
-    console.log('Submitting reply:', replyContent);
-    // Reset form
-    setReplyContent('');
+    
+    // Validate input
+    if (!replyContent.trim()) {
+      setReplyError('Reply cannot be empty');
+      return;
+    }
+    
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      setReplyError('You must be logged in to reply');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setReplyError(null);
+    
+    try {
+      // Send the reply to the backend
+      const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/replies`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          body: replyContent,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit reply');
+      }
+      
+      // Reset form
+      setReplyContent('');
+      
+      // Fetch updated replies
+      const repliesResponse = await fetch(`http://localhost:3000/api/tickets/${ticketId}/replies`, {
+        credentials: 'include'
+      });
+      
+      if (!repliesResponse.ok) {
+        throw new Error('Failed to refresh replies');
+      }
+      
+      const repliesData = await repliesResponse.json();
+      setReplies(repliesData);
+      
+    } catch (err) {
+      console.error('Error submitting reply:', err);
+      setReplyError(err.message || 'Failed to submit reply');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   // Format date
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
     return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+  
+  // Handle accepting an answer
+  const handleAcceptAnswer = async (replyId) => {
+    if (!isAuthenticated || !ticket || user.id !== ticket.user_id) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/replies/${replyId}/accept`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to accept answer');
+      }
+      
+      // Update local state
+      setTicket(prev => ({ ...prev, status: 'closed' }));
+      setReplies(prev => prev.map(reply => {
+        if (reply.id === replyId) {
+          return { ...reply, is_accepted: true };
+        }
+        return reply;
+      }));
+      
+    } catch (err) {
+      console.error('Error accepting answer:', err);
+    }
   };
 
   return (
@@ -127,11 +246,18 @@ const SingleTicket = () => {
 
         {/* Ticket content */}
         {!isLoading && ticket && (
-          <>
+          <div className="space-y-6">
             {/* Ticket header */}
             <div className="mb-6">
               <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">{ticket.title}</h1>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  {ticket.title}
+                  {ticket.status === 'closed' && (
+                    <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Resolved
+                    </span>
+                  )}
+                </h1>
                 <FavoriteButton ticketId={ticket.id} size="2x" />
               </div>
               <div className="flex flex-wrap items-center text-sm text-gray-500 gap-4">
@@ -142,12 +268,7 @@ const SingleTicket = () => {
                 </span>
               </div>
             </div>
-          </>
-        )}
-        
-        {/* Ticket and replies container */}
-        {!isLoading && ticket && (
-          <div className="space-y-6">
+            
             {/* Main ticket */}
             <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-300">
               <div className="px-4 py-5 sm:px-6">
@@ -188,21 +309,65 @@ const SingleTicket = () => {
                     <span>{formatDate(ticket.created_at)}</span>
                   </div>
                   
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center cursor-pointer hover:text-gray-900 group">
-                      <svg className="h-5 w-5 mr-1 text-gray-500 group-hover:text-gray-900" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-                      </svg>
-                      <span className="font-medium">{ticket.upvotes || 0}</span>
-                    </div>
-                    
-                    <div className="flex items-center cursor-pointer hover:text-gray-900 group">
-                      <svg className="h-5 w-5 mr-1 text-gray-500 group-hover:text-gray-900" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.667v-5.43a2 2 0 00-1.105-1.79l-.05-.025A4 4 0 0011.055 2H5.64a2 2 0 00-1.962 1.608l-1.2 6A2 2 0 004.44 12H8v4a2 2 0 002 2 1 1 0 001-1v-.667a4 4 0 01.8-2.4l1.4-1.866a4 4 0 00.8-2.4z" />
-                      </svg>
-                      <span className="font-medium">{ticket.downvotes || 0}</span>
-                    </div>
-                  </div>
+                  <VoteButtons 
+                    itemId={ticket.id}
+                    itemType="ticket"
+                    upvotes={ticket.upvotes}
+                    downvotes={ticket.downvotes}
+                    userVote={ticketVotes[ticket.id]}
+                    onVoteChange={(newVoteType, prevVoteType) => {
+                      // Update user vote state
+                      setTicketVotes(prevVotes => {
+                        const updatedVotes = {...prevVotes};
+                        
+                        if (newVoteType === null) {
+                          // Remove the vote
+                          delete updatedVotes[ticket.id];
+                        } else {
+                          // Add or change vote
+                          updatedVotes[ticket.id] = newVoteType;
+                        }
+                        
+                        return updatedVotes;
+                      });
+                      
+                      // Update ticket vote counts
+                      setTicket(prev => {
+                        const updated = {...prev};
+                        
+                        // Case 1: Removing a vote (clicking the same vote type again)
+                        if (newVoteType === null) {
+                          if (prevVoteType === 'upvote') {
+                            updated.upvotes = Math.max(0, prev.upvotes - 1);
+                          } else if (prevVoteType === 'downvote') {
+                            updated.downvotes = Math.max(0, prev.downvotes - 1);
+                          }
+                        }
+                        // Case 2: Adding a new vote (no previous vote)
+                        else if (prevVoteType === null) {
+                          if (newVoteType === 'upvote') {
+                            updated.upvotes = prev.upvotes + 1;
+                          } else if (newVoteType === 'downvote') {
+                            updated.downvotes = prev.downvotes + 1;
+                          }
+                        }
+                        // Case 3: Changing vote type
+                        else if (prevVoteType !== newVoteType) {
+                          if (newVoteType === 'upvote') {
+                            // Changing from downvote to upvote
+                            updated.upvotes = prev.upvotes + 1;
+                            updated.downvotes = Math.max(0, prev.downvotes - 1);
+                          } else if (newVoteType === 'downvote') {
+                            // Changing from upvote to downvote
+                            updated.upvotes = Math.max(0, prev.upvotes - 1);
+                            updated.downvotes = prev.downvotes + 1;
+                          }
+                        }
+                        
+                        return updated;
+                      });
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -228,11 +393,26 @@ const SingleTicket = () => {
                         />
                         <span className="text-sm font-medium text-gray-700">{reply.author_username}</span>
                       </div>
-                      {reply.is_accepted && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Accepted Answer
-                        </span>
-                      )}
+                      <div className="flex items-center">
+                        {/* Only show Accept Answer button if ticket status is not resolved and current user is author */}
+                        {
+                         ticket.status === 'open' && 
+                         user.id === ticket.author_id && 
+                         reply.is_accepted === 0 &&
+                        (
+                          <button 
+                            onClick={() => handleAcceptAnswer(reply.id)}
+                            className="mr-2 px-3 py-1 text-xs font-medium rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                          >
+                            Accept as Answer
+                          </button>
+                        )}
+                        {reply.is_accepted ===  1 && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Accepted Answer
+                          </span>
+                        )}
+                      </div>
                     </div>
                     
                     {/* Content */}
@@ -246,72 +426,144 @@ const SingleTicket = () => {
                         <span>{formatDate(reply.created_at)}</span>
                       </div>
                       
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center cursor-pointer hover:text-gray-900 group">
-                          <svg className="h-5 w-5 mr-1 text-gray-500 group-hover:text-gray-900" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-                          </svg>
-                          <span className="font-medium">{reply.upvotes || 0}</span>
-                        </div>
-
-                        <div className="flex items-center cursor-pointer hover:text-gray-900 group">
-                          <svg
-                            className="h-5 w-5 mr-1 text-gray-500 group-hover:text-gray-900"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.667v-5.43a2 2 0 00-1.105-1.79l-.05-.025A4 4 0 0011.055 2H5.64a2 2 0 00-1.962 1.608l-1.2 6A2 2 0 004.44 12H8v4a2 2 0 002 2 1 1 0 001-1v-.667a4 4 0 01.8-2.4l1.4-1.866a4 4 0 00.8-2.4z" />
-                          </svg>
-                          <span className="font-medium">{reply.downvotes}</span>
-                        </div>
-
-                        {!reply.is_accepted && (
-                          <button className="text-gray-400 hover:text-green-500 cursor-pointer">
-                            <svg
-                              className="h-6 w-6"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
+                      <VoteButtons 
+                        itemId={{ ticketId: ticket.id, replyId: reply.id }}
+                        itemType="reply"
+                        upvotes={reply.upvotes}
+                        downvotes={reply.downvotes}
+                        userVote={replyVotes[reply.id]}
+                        onVoteChange={(newVoteType, prevVoteType) => {
+                          // Update user vote state
+                          setReplyVotes(prevVotes => {
+                            const updatedVotes = {...prevVotes};
+                            
+                            if (newVoteType === null) {
+                              // Remove the vote
+                              delete updatedVotes[reply.id];
+                            } else {
+                              // Add or change vote
+                              updatedVotes[reply.id] = newVoteType;
+                            }
+                            
+                            return updatedVotes;
+                          });
+                          
+                          // Update reply vote counts
+                          setReplies(prev => prev.map(r => {
+                            if (r.id !== reply.id) return r;
+                            
+                            const updated = {...r};
+                            
+                            // Case 1: Removing a vote (clicking the same vote type again)
+                            if (newVoteType === null) {
+                              if (prevVoteType === 'upvote') {
+                                updated.upvotes = Math.max(0, r.upvotes - 1);
+                              } else if (prevVoteType === 'downvote') {
+                                updated.downvotes = Math.max(0, r.downvotes - 1);
+                              }
+                            }
+                            // Case 2: Adding a new vote (no previous vote)
+                            else if (prevVoteType === null) {
+                              if (newVoteType === 'upvote') {
+                                updated.upvotes = r.upvotes + 1;
+                              } else if (newVoteType === 'downvote') {
+                                updated.downvotes = r.downvotes + 1;
+                              }
+                            }
+                            // Case 3: Changing vote type
+                            else if (prevVoteType !== newVoteType) {
+                              if (newVoteType === 'upvote') {
+                                // Changing from downvote to upvote
+                                updated.upvotes = r.upvotes + 1;
+                                updated.downvotes = Math.max(0, r.downvotes - 1);
+                              } else if (newVoteType === 'downvote') {
+                                // Changing from upvote to downvote
+                                updated.upvotes = Math.max(0, r.upvotes - 1);
+                                updated.downvotes = r.downvotes + 1;
+                              }
+                            }
+                            
+                            return updated;
+                          }));
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Add reply form */}
-            <div className="bg-white mt-6 overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:px-6">
-                <h3 className="text-lg font-medium leading-6 text-gray-900">Add Reply</h3>
-                <form className="mt-4" onSubmit={handleSubmitReply}>
-                  <div>
-                    <textarea
-                      rows="4"
-                      className="shadow-sm block w-full focus:ring-blue-500 focus:border-blue-500 sm:text-sm border border-gray-300 rounded-md p-2"
-                      placeholder="Write your answer here..."
-                      value={replyContent}
-                      onChange={(e) => setReplyContent(e.target.value)}
-                    ></textarea>
-                  </div>
-                  <div className="flex justify-end mt-3">
-                    <button
-                      type="submit"
-                      className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      Post Reply
-                    </button>
-                  </div>
-                </form>
+            {/* Add reply form - Only show if the ticket is not resolved */}
+            {ticket.status === 'open' ? (
+              <div className="bg-white mt-6 overflow-hidden shadow rounded-lg">
+                <div className="px-4 py-5 sm:px-6">
+                  <h3 className="text-lg font-medium leading-6 text-gray-900">Add Reply</h3>
+                  {isAuthenticated ? (
+                    <form className="mt-4" onSubmit={handleSubmitReply}>
+                      {/* Current user info */}
+                      {user && (
+                        <div className="flex items-center mb-4 p-3 bg-blue-50 border border-blue-100 rounded-md">
+                          <img
+                            className="h-10 w-10 rounded-full mr-3 border-2 border-white shadow-sm"
+                            src={`https://ui-avatars.com/api/?name=${user.username}&background=random&color=fff&background=2563EB`}
+                            alt={`${user.username}'s avatar`}
+                          />
+                          <div>
+                            <span className="block text-sm font-medium text-gray-900">Posting as:</span>
+                            <span className="block text-base font-semibold text-blue-700">{user.username}</span>
+                          </div>
+                        </div>
+                      )}
+                      {replyError && (
+                        <div className="mb-4 bg-red-50 p-2 rounded-md">
+                          <p className="text-sm text-red-700">{replyError}</p>
+                        </div>
+                      )}
+                      <div>
+                        <textarea
+                          rows="4"
+                          className="shadow-sm block w-full focus:ring-blue-500 focus:border-blue-500 sm:text-sm border border-gray-300 rounded-md p-2"
+                          placeholder="Write your answer here..."
+                          value={replyContent}
+                          onChange={(e) => setReplyContent(e.target.value)}
+                          disabled={isSubmitting}
+                        ></textarea>
+                      </div>
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          type="submit"
+                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Posting...
+                            </>
+                          ) : (
+                            'Post Reply'
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-md text-center">
+                      <p className="text-gray-600">You need to be logged in to reply to this ticket.</p>
+                      <a href="/login" className="mt-2 inline-block text-blue-600 hover:text-blue-800">
+                        Sign in to reply
+                      </a>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+                <p className="text-green-700 font-medium">This ticket has been resolved with an accepted answer.</p>
+              </div>
+            )}
           </div>
         )}
       </div>

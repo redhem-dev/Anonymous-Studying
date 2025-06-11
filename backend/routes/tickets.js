@@ -35,11 +35,16 @@ router.get('/user/favorites', isLoggedIn, ticketController.getUserFavorites);
 router.post('/:id/favorite', isLoggedIn, ticketController.addToFavorites);
 router.delete('/:id/favorite', isLoggedIn, ticketController.removeFromFavorites);
 
+// User votes routes
+router.get('/user/votes', isLoggedIn, ticketController.getUserVotes);
+router.get('/user/reply-votes', isLoggedIn, replyController.getUserReplyVotes);
+
 // Reply routes
 router.get('/:ticketId/replies', replyController.getAllReplies);
 router.post('/:ticketId/replies', isLoggedIn, upload.single('image'), replyController.createReply);
 router.put('/:ticketId/replies/:replyId', isLoggedIn, upload.single('image'), replyController.updateReply);
 router.delete('/:ticketId/replies/:replyId', isLoggedIn, replyController.deleteReply);
+router.post('/:ticketId/replies/:replyId/accept', isLoggedIn, replyController.acceptReply);
 
 // Reply voting routes
 router.post('/:ticketId/replies/:replyId/upvote', isLoggedIn, replyController.upvoteReply);
