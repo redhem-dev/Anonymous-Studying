@@ -3,7 +3,9 @@ import { useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FavoriteButton from '../components/FavoriteButton';
 import VoteButtons from '../components/VoteButtons';
+import EditTicketModal from '../components/EditTicketModal';
 import useAuth from '../hooks/useAuth';
+import useUpdateTicket from '../hooks/useUpdateTicket';
 import axios from 'axios';
 
 const SingleTicket = () => {
@@ -16,8 +18,12 @@ const SingleTicket = () => {
   const [replyError, setReplyError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { isAuthenticated, user } = useAuth();
+  const { updateTicket } = useUpdateTicket();
   const [ticketVotes, setTicketVotes] = useState({});
   const [replyVotes, setReplyVotes] = useState({});
+  
+  // Edit modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchTicketData = async () => {
@@ -180,11 +186,13 @@ const SingleTicket = () => {
   
   // Handle accepting an answer
   const handleAcceptAnswer = async (replyId) => {
-    if (!isAuthenticated || !ticket || user.id !== ticket.user_id) {
+    if (!isAuthenticated || !ticket || user.id !== ticket.author_id) {
+      console.log('Authorization check failed:', { isAuthenticated, userId: user?.id, authorId: ticket?.author_id });
       return;
     }
     
     try {
+      console.log('Accepting answer for reply:', replyId);
       const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/replies/${replyId}/accept`, {
         method: 'POST',
         credentials: 'include',
@@ -194,20 +202,45 @@ const SingleTicket = () => {
       });
       
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error:', errorText);
         throw new Error('Failed to accept answer');
       }
+      
+      const result = await response.json();
+      console.log('Accept answer response:', result);
       
       // Update local state
       setTicket(prev => ({ ...prev, status: 'closed' }));
       setReplies(prev => prev.map(reply => {
         if (reply.id === replyId) {
-          return { ...reply, is_accepted: true };
+          return { ...reply, is_accepted: 1 };
         }
         return reply;
       }));
       
     } catch (err) {
       console.error('Error accepting answer:', err);
+    }
+  };
+
+  const handleSaveTicket = async (ticketId, formData) => {
+    try {
+      await updateTicket(ticketId, formData);
+      
+      // Update the ticket in the UI
+      setTicket(prev => ({
+        ...prev,
+        title: formData.title,
+        body: formData.body,
+        topic_id: formData.topic_id,
+        tags: formData.tags
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating ticket:', error);
+      return false;
     }
   };
 
@@ -258,7 +291,20 @@ const SingleTicket = () => {
                     </span>
                   )}
                 </h1>
-                <FavoriteButton ticketId={ticket.id} size="2x" />
+                <div className="flex items-center space-x-3">
+                  {isAuthenticated && user && ticket.author_id === user.id && (
+                    <button
+                      onClick={() => setIsEditModalOpen(true)}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                      Edit
+                    </button>
+                  )}
+                  <FavoriteButton ticketId={ticket.id} size="2x" />
+                </div>
               </div>
               <div className="flex flex-wrap items-center text-sm text-gray-500 gap-4">
                 <span>Asked {formatDate(ticket.created_at)}</span>
@@ -567,6 +613,14 @@ const SingleTicket = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Ticket Modal */}
+      <EditTicketModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        ticket={ticket}
+        onSave={handleSaveTicket}
+      />
     </div>
   );
 };

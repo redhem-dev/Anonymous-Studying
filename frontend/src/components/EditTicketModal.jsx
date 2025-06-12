@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import useTopics from '../hooks/useTopics';
 
 const EditTicketModal = ({ isOpen, onClose, ticket, onSave }) => {
   const [formData, setFormData] = useState({
@@ -7,46 +8,25 @@ const EditTicketModal = ({ isOpen, onClose, ticket, onSave }) => {
     topic_id: '',
     tags: []
   });
-  const [topics, setTopics] = useState([]);
+  const { topics, isLoading: topicsLoading } = useTopics();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
-  // Fetch topics when the modal opens
+  // Initialize form data when ticket or modal changes
   useEffect(() => {
-    if (isOpen) {
-      fetchTopics();
-      
+    if (isOpen && ticket) {
       // Reset form with ticket data
-      if (ticket) {
-        setFormData({
-          title: ticket.title || '',
-          body: ticket.body || '',
-          topic_id: ticket.topic_id || '',
-          tags: ticket.tags || []
-        });
-      }
+      setFormData({
+        title: ticket.title || '',
+        body: ticket.body || '',
+        topic_id: ticket.topic_id || '',
+        tags: ticket.tags || []
+      });
     }
   }, [isOpen, ticket]);
 
-  // Fetch topics from API
-  const fetchTopics = async () => {
-    try {
-      const response = await fetch('http://localhost:3000/api/topics', {
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setTopics(data.topics || []);
-    } catch (err) {
-      console.error('Failed to fetch topics:', err);
-      setError('Failed to load topics. Please try again.');
-    }
-  };
+
 
   // Handle form input changes
   const handleChange = (e) => {
@@ -88,16 +68,14 @@ const EditTicketModal = ({ isOpen, onClose, ticket, onSave }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay */}
-        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-          <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-        </div>
-
-        {/* Modal panel */}
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+    <div className="fixed inset-x-0 top-16 bottom-0 z-50 overflow-y-auto" style={{ zIndex: 100 }}>
+      {/* Backdrop with blur effect */}
+      <div className="fixed inset-x-0 top-16 bottom-0 bg-gray-100 bg-opacity-15 backdrop-filter backdrop-blur-sm" onClick={onClose}></div>
+      
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0 relative">
+        {/* Modal panel with rounded corners and thicker border */}
+        <div className="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-2 border-gray-600 rounded-xl">
             <div className="sm:flex sm:items-start">
               <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                 <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
@@ -144,7 +122,7 @@ const EditTicketModal = ({ isOpen, onClose, ticket, onSave }) => {
                 <form onSubmit={handleSubmit}>
                   {/* Title field */}
                   <div className="mb-4">
-                    <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1 my-2 p-2">
                       Title *
                     </label>
                     <input
@@ -154,13 +132,13 @@ const EditTicketModal = ({ isOpen, onClose, ticket, onSave }) => {
                       value={formData.title}
                       onChange={handleChange}
                       required
-                      className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                      className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
                     />
                   </div>
                   
                   {/* Body/Content field */}
                   <div className="mb-4">
-                    <label htmlFor="body" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="body" className="block text-sm font-medium text-gray-700 mb-1 my-2 p-2">
                       Content *
                     </label>
                     <textarea
@@ -170,13 +148,13 @@ const EditTicketModal = ({ isOpen, onClose, ticket, onSave }) => {
                       value={formData.body}
                       onChange={handleChange}
                       required
-                      className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                      className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
                     ></textarea>
                   </div>
                   
                   {/* Topic selection */}
                   <div className="mb-4">
-                    <label htmlFor="topic_id" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="topic_id" className="block text-sm font-medium text-gray-700 mb-1 my-2 p-2">
                       Topic *
                     </label>
                     <select
@@ -185,20 +163,28 @@ const EditTicketModal = ({ isOpen, onClose, ticket, onSave }) => {
                       value={formData.topic_id}
                       onChange={handleChange}
                       required
-                      className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                      disabled={topicsLoading}
+                      className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
                     >
-                      <option value="">Select a topic</option>
-                      {topics.map(topic => (
-                        <option key={topic.id} value={topic.id}>
-                          {topic.name}
-                        </option>
-                      ))}
+                      <option value="">{topicsLoading ? 'Loading topics...' : 'Select a topic'}</option>
+                      {topics && topics.length > 0 ? (
+                        topics.map(topic => (
+                          <option key={topic.id} value={topic.id}>
+                            {topic.name}
+                          </option>
+                        ))
+                      ) : !topicsLoading && (
+                        <option value="" disabled>No topics available</option>
+                      )}
                     </select>
+                    {topicsLoading && (
+                      <p className="mt-1 text-xs text-blue-500">Loading topics...</p>
+                    )}
                   </div>
                   
                   {/* Tags field */}
                   <div className="mb-6">
-                    <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-1 my-2 p-2">
                       Tags (comma separated)
                     </label>
                     <input
@@ -210,7 +196,7 @@ const EditTicketModal = ({ isOpen, onClose, ticket, onSave }) => {
                         const tagsArray = e.target.value.split(',').map(tag => tag.trim()).filter(Boolean);
                         setFormData(prev => ({ ...prev, tags: tagsArray }));
                       }}
-                      className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                      className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
                       placeholder="e.g. math, homework, algebra"
                     />
                   </div>

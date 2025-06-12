@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth');
 const ticketRoutes = require('./routes/tickets');
 const userRoutes = require('./routes/users');
 const favoriteRoutes = require('./routes/favorites');
+const topicRoutes = require('./routes/topics');
 
 // Middleware to check if user is authenticated
 function isLoggedIn(req, res, next) {
@@ -79,6 +80,7 @@ app.get('/protected', isLoggedIn, (req, res) => {
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/topics', topicRoutes);
 // app.use('/api/replies', replyRoutes);
 
 // Start the server

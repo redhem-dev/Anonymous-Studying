@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import useCreateTicket from '../hooks/useCreateTicket';
 import useTickets from '../hooks/useTickets';
+import useTopics from '../hooks/useTopics';
 
 const CreateTicketModal = ({ isOpen, onClose }) => {
-  // Example topics for the dropdown
-  const topics = [
-    { id: 1, name: 'Mathematics' },
-    { id: 2, name: 'Computer Science' },
-    { id: 3, name: 'Physics' },
-    { id: 4, name: 'Chemistry' },
-    { id: 5, name: 'Literature' },
-    { id: 6, name: 'History' },
-    { id: 7, name: 'Biology' },
-  ];
+  // Fetch topics from the API using our custom hook
+  const { topics, isLoading: topicsLoading } = useTopics();
 
   // Form state
   const [title, setTitle] = useState('');
@@ -168,14 +161,22 @@ const CreateTicketModal = ({ isOpen, onClose }) => {
                       value={selectedTopic}
                       onChange={(e) => setSelectedTopic(e.target.value)}
                       required
+                      disabled={topicsLoading}
                     >
-                      <option value="" disabled>Select a topic</option>
-                      {topics.map((topic) => (
-                        <option key={topic.id} value={topic.id}>
-                          {topic.name}
-                        </option>
-                      ))}
+                      <option value="" disabled>{topicsLoading ? 'Loading topics...' : 'Select a topic'}</option>
+                      {topics && topics.length > 0 ? (
+                        topics.map((topic) => (
+                          <option key={topic.id} value={topic.id}>
+                            {topic.name}
+                          </option>
+                        ))
+                      ) : !topicsLoading && (
+                        <option value="" disabled>No topics available</option>
+                      )}
                     </select>
+                    {topicsLoading && (
+                      <p className="mt-1 text-xs text-blue-500">Loading topics...</p>
+                    )}
                   </div>
                   
                   {/* Tags field */}

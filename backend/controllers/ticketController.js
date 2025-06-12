@@ -1,5 +1,6 @@
 const Ticket = require('../models/Ticket');
 const Vote = require('../models/Vote');
+const Topic = require('../models/Topic');
 
 const ticketController = {
   // Get all tickets
@@ -42,6 +43,10 @@ const ticketController = {
       }
       
       const ticketId = await Ticket.create(title, body, topicId, authorId, imageBuffer);
+      
+      // Increment the topic's ticket count
+      await Topic.incrementTicketCount(topicId);
+      
       res.status(201).json({ id: ticketId, message: 'Ticket created successfully' });
     } catch (error) {
       console.error('Error creating ticket:', error);
@@ -83,18 +88,30 @@ const ticketController = {
   deleteTicket: async (req, res) => {
     try {
       const ticketId = req.params.id;
+      const userId = req.user.id;
+      
+      // Get the ticket to verify ownership
       const ticket = await Ticket.findById(ticketId);
       
       if (!ticket) {
         return res.status(404).json({ error: 'Ticket not found' });
       }
       
-      // Check if user is the author of the ticket
-      if (ticket.author_id !== req.user.id) {
-        return res.status(403).json({ error: 'Not authorized to delete this ticket' });
+      // Check if user owns the ticket or is a moderator
+      if (ticket.author_id !== userId && !req.user.is_moderator) {
+        return res.status(403).json({ error: 'You do not have permission to delete this ticket' });
       }
       
+      // Store the topic ID before deleting the ticket
+      const topicId = ticket.topic_id;
+      
       await Ticket.delete(ticketId);
+      
+      // Decrement the topic's ticket count
+      if (topicId) {
+        await Topic.decrementTicketCount(topicId);
+      }
+      
       res.json({ message: 'Ticket deleted successfully' });
     } catch (error) {
       console.error('Error deleting ticket:', error);

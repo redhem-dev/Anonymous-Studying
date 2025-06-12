@@ -1,6 +1,7 @@
 const Reply = require('../models/Reply');
 const Ticket = require('../models/Ticket');
 const Vote = require('../models/Vote');
+const pool = require('../config/database');
 
 const replyController = {
   // Get all replies for a ticket
@@ -170,7 +171,7 @@ const replyController = {
       
       // First, verify that the user is the owner of the ticket
       const [tickets] = await pool.execute(
-        'SELECT * FROM tickets WHERE id = ? AND user_id = ?',
+        'SELECT * FROM tickets WHERE id = ? AND author_id = ?',
         [ticketId, userId]
       );
       
@@ -186,7 +187,7 @@ const replyController = {
       
       // Mark the ticket as resolved
       await pool.execute(
-        'UPDATE tickets SET is_resolved = 1 WHERE id = ?',
+        'UPDATE tickets SET status = "closed" WHERE id = ?',
         [ticketId]
       );
       
