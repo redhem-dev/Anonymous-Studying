@@ -41,15 +41,17 @@ app.use(express.json());
 app.use(session({ 
     secret: process.env.SESSION_SECRET, 
     resave: false, 
-    saveUninitialized: true, // Changed to true to ensure session is always initialized
+    saveUninitialized: true, // Ensure session is always initialized
     name: 'connect.sid', // Be explicit about the cookie name
     cookie: {
-        secure: true, // Must be true when sameSite is 'none'
+        secure: true, // Must be true for cross-domain in production
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: 'none', // For cross-domain cookies
-        path: '/' // Explicit path setting
+        sameSite: 'none', // Required for cross-domain cookies
+        path: '/', // Explicit path setting
+        domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined // Allow subdomains in production
     },
+    proxy: true, // Trust the reverse proxy for secure cookies
     unset: 'destroy' // Ensure complete removal on req.session.destroy()
 }));
 
