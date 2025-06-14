@@ -96,14 +96,31 @@ const authController = {
     }),
     async (req, res) => {
       try {
+        // Force regenerate the session to ensure clean state
+        const regenerateSession = () => {
+          return new Promise((resolve, reject) => {
+            req.session.regenerate((err) => {
+              if (err) reject(err);
+              else resolve();
+            });
+          });
+        };
+
         // By this point, req.user should contain the user object passed from Google strategy
         if (!req.user) {
           return res.redirect(process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login?error=no_user` : 'http://localhost:5173/login?error=no_user');
         }
         
+        // First regenerate the session to ensure clean state
+        await regenerateSession();
+        
+        // Explicitly store user in session and save
+        req.session.passport = { user: req.user.id || req.user.emailHash };
+        
         // Make sure the session is saved before redirecting
         req.session.save((err) => {
           if (err) {
+            console.error('Session save error:', err);
             return res.redirect(process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login?error=session_error` : 'http://localhost:5173/login?error=session_error');
           }
           

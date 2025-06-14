@@ -37,19 +37,21 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// Enable trust proxy - CRITICAL for secure cookies behind a proxy
+app.set('trust proxy', 1);
+
 // Session configuration
 app.use(session({ 
     secret: process.env.SESSION_SECRET, 
-    resave: false, 
+    resave: true, // Changed to true to ensure session is saved on each request
     saveUninitialized: true, // Ensure session is always initialized
-    name: 'connect.sid', // Be explicit about the cookie name
+    name: 'study_session', // Custom name to avoid conflicts
     cookie: {
         secure: true, // Must be true for cross-domain in production
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         sameSite: 'none', // Required for cross-domain cookies
-        path: '/', // Explicit path setting
-        domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined // Allow subdomains in production
+        path: '/' // Explicit path setting
     },
     proxy: true, // Trust the reverse proxy for secure cookies
     unset: 'destroy' // Ensure complete removal on req.session.destroy()
