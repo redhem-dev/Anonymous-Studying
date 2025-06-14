@@ -11,7 +11,7 @@ const authController = {
         isAuthenticated: true, 
         user: req.user
       });
-    } else if (req.isAuthenticated() && req.user) {
+    } else if (req.isAuthenticated() && req.user && req.user.tempUser) {
       // Temporary user - needs to complete registration
       res.json({ 
         isAuthenticated: false, 
