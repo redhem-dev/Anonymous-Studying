@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { buildApiUrl } from '../config/apiConfig';
 
 const useTopics = () => {
   const [topics, setTopics] = useState([]);
@@ -11,7 +12,7 @@ const useTopics = () => {
     setError(null);
     
     try {
-      const response = await axios.get('http://localhost:3000/api/topics');
+      const response = await axios.get(buildApiUrl('/api/topics'));
       setTopics(response.data);
     } catch (err) {
       setError('Failed to fetch topics');

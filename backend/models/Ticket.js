@@ -13,16 +13,40 @@ class Ticket {
     }
     
     static async getAllByUserId(userId) {
+        // Use a more reliable approach with subqueries to ensure accurate counts
         const [rows] = await pool.query(`
-            SELECT t.*, u.username as author_username, tp.name as topic_name,
-            (SELECT COUNT(*) FROM replies r WHERE r.ticket_id = t.id) as reply_count
-            FROM tickets t
-            LEFT JOIN users u ON t.author_id = u.id
-            LEFT JOIN topics tp ON t.topic_id = tp.id
-            WHERE t.author_id = ?
-            ORDER BY t.created_at DESC
+            SELECT 
+                t.*,
+                u.username as author_username,
+                tp.name as topic_name,
+                (SELECT COUNT(*) FROM replies WHERE ticket_id = t.id) as reply_count,
+                (SELECT COUNT(*) FROM user_votes_tickets WHERE ticket_id = t.id AND vote_type = 'upvote') as upvotes,
+                (SELECT COUNT(*) FROM user_votes_tickets WHERE ticket_id = t.id AND vote_type = 'downvote') as downvotes
+            FROM 
+                tickets t
+            JOIN 
+                users u ON t.author_id = u.id
+            JOIN 
+                topics tp ON t.topic_id = tp.id
+            WHERE 
+                t.author_id = ?
+            ORDER BY 
+                t.created_at DESC
         `, [userId]);
-        return rows;
+        
+        console.log('Query results for user', userId, ':', rows);
+        
+        // Ensure all fields are properly formatted as numbers and explicitly shown in response
+        return rows.map(ticket => {
+            const mappedTicket = {
+                ...ticket,
+                reply_count: Number(ticket.reply_count || 0),
+                upvotes: Number(ticket.upvotes || 0),
+                downvotes: Number(ticket.downvotes || 0)
+            };
+            console.log(`Ticket ${ticket.id} mapped with reply_count:`, mappedTicket.reply_count);
+            return mappedTicket;
+        });
     }
     
     static async searchByTitle(searchTerm) {

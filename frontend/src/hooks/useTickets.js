@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { buildApiUrl } from '../config/apiConfig';
 
 /**
  * Custom hook to fetch all tickets and provide search functionality
@@ -16,7 +17,7 @@ export const useTickets = () => {
     const fetchTickets = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('http://localhost:3000/api/tickets', {
+        const response = await fetch(buildApiUrl('/api/tickets'), {
           credentials: 'include' // Include cookies for authentication
         });
         
@@ -48,10 +49,9 @@ export const useTickets = () => {
 
     try {
       setIsSearching(true);
-      const response = await fetch(`http://localhost:3000/api/tickets/search?query=${encodeURIComponent(query)}`, {
+      const response = await fetch(buildApiUrl(`/api/tickets/search?query=${encodeURIComponent(query)}`), {
         credentials: 'include' // Include cookies for authentication
       });
-      console.log(response);
       
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -73,7 +73,9 @@ export const useTickets = () => {
   const refreshTickets = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:3000/api/tickets');
+      const response = await fetch(buildApiUrl('/api/tickets'), {
+        credentials: 'include' // Include cookies for authentication
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);

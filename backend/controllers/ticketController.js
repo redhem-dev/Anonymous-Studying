@@ -190,13 +190,12 @@ const ticketController = {
   // Get all tickets by user ID
   getUserTickets: async (req, res) => {
     try {
-      console.log('User object in request:', req.user);
+
       const userId = req.user?.id;
       
       // Also check query parameter as a backup (for debugging)
       const queryUserId = req.query.uid;
-      console.log('User ID from session:', userId, 'Type:', typeof userId);
-      console.log('User ID from query:', queryUserId, 'Type:', typeof queryUserId);
+
       
       // Use either source for the ID
       const finalUserId = userId || queryUserId;
@@ -204,10 +203,31 @@ const ticketController = {
       // Get a sample of tickets to check if any exist
       const pool = require('../config/database');
       const [allTickets] = await pool.query('SELECT id, author_id FROM tickets LIMIT 10');
-      console.log('Sample of tickets in DB:', allTickets);
+
       
-      const tickets = await Ticket.getAllByUserId(finalUserId);
-      console.log('Tickets returned for user:', tickets.length);
+      const rawTickets = await Ticket.getAllByUserId(finalUserId);
+
+      
+      // Explicitly map each ticket to ensure all fields are included
+      const tickets = rawTickets.map(ticket => ({
+        id: ticket.id,
+        title: ticket.title,
+        body: ticket.body,
+        topic_id: ticket.topic_id,
+        author_id: ticket.author_id,
+        created_at: ticket.created_at,
+        updated_at: ticket.updated_at,
+        status: ticket.status,
+        image: ticket.image,
+        author_username: ticket.author_username,
+        topic_name: ticket.topic_name,
+        reply_count: ticket.reply_count || 0,
+        upvotes: Number(ticket.upvotes || 0),
+        downvotes: Number(ticket.downvotes || 0)
+      }));
+      
+      // Log the processed tickets to verify reply_count is included
+      // Removed console.log statements as requested
       
       res.json({
         userId: finalUserId,

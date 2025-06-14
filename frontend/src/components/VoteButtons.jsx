@@ -2,6 +2,7 @@ import React from 'react';
 import { HandThumbUpIcon, HandThumbDownIcon } from '@heroicons/react/24/solid';
 import useAuth from '../hooks/useAuth';
 import { toast } from 'react-hot-toast';
+import { buildApiUrl } from '../config/apiConfig';
 
 /**
  * VoteButtons component for handling upvote/downvote functionality
@@ -37,10 +38,10 @@ const VoteButtons = ({
       // Determine the endpoint based on item type
       let apiEndpoint;
       if (itemType === 'ticket') {
-        apiEndpoint = `http://localhost:3000/api/tickets/${itemId}/${voteType}`;
+        apiEndpoint = buildApiUrl(`/api/tickets/${itemId}/${voteType}`);
       } else {
         // For replies, we need both ticketId and replyId in the URL
-        apiEndpoint = `http://localhost:3000/api/tickets/${itemId.ticketId}/replies/${itemId.replyId}/${voteType}`;
+        apiEndpoint = buildApiUrl(`/api/tickets/${itemId.ticketId}/replies/${itemId.replyId}/${voteType}`);
       }
       
       // If user clicked the same vote type they already selected, they want to remove it

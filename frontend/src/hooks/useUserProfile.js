@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import useAuth from './useAuth';
+import { buildApiUrl } from '../config/apiConfig';
 
 /**
  * Custom hook for user profile data
@@ -19,17 +20,15 @@ const useUserProfile = () => {
       // Store user ID in localStorage for other components to use
       if (user.id) {
         localStorage.setItem('userId', user.id);
-        console.log('Stored user ID in localStorage:', user.id);
       }
       
       try {
         setIsLoading(true);
         // Get userId from either context or localStorage
         const userId = user?.id || localStorage.getItem('userId');
-        console.log('Fetching tickets with userId:', userId);
         
         // Use the EXACT path as defined in your routes file
-        const response = await fetch(`http://localhost:3000/api/tickets/user/tickets?uid=${userId}`, {
+        const response = await fetch(buildApiUrl(`/api/tickets/user/tickets?uid=${userId}`), {
           credentials: 'include', // Important for cookies/session
         });
         
@@ -38,8 +37,14 @@ const useUserProfile = () => {
         }
         
         const data = await response.json();
-        console.log('Response from tickets API:', data);
-        setUserTickets(data.tickets || []);
+        
+        // Ensure reply_count is properly formatted for each ticket
+        const formattedTickets = (data.tickets || []).map(ticket => ({
+          ...ticket,
+          reply_count: typeof ticket.reply_count === 'number' ? ticket.reply_count : parseInt(ticket.reply_count || 0)
+        }));
+        
+        setUserTickets(formattedTickets);
       } catch (err) {
         console.error('Failed to fetch user tickets:', err);
         setError('Failed to load your tickets. Please try again.');
@@ -59,7 +64,7 @@ const useUserProfile = () => {
   const deleteTicket = async (ticketId) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}`, {
+      const response = await fetch(buildApiUrl(`/api/tickets/${ticketId}`), {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -90,7 +95,7 @@ const useUserProfile = () => {
   const editTicket = async (ticketId, ticketData) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}`, {
+      const response = await fetch(buildApiUrl(`/api/tickets/${ticketId}`), {
         method: 'PUT',
         credentials: 'include',
         headers: {

@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faStar as faStarSolid } from '@fortawesome/free-solid-svg-icons';
 import { faStar as faStarRegular } from '@fortawesome/free-regular-svg-icons';
 import useAuth from '../hooks/useAuth';
+import { buildApiUrl } from '../config/apiConfig';
 
 /**
  * A reusable favorite button component
@@ -29,7 +30,7 @@ const FavoriteButton = ({ ticketId, size = "lg", className = "", onFavoriteChang
   const checkFavoriteStatus = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`http://localhost:3000/api/favorites/check/${ticketId}`, {
+      const response = await fetch(buildApiUrl(`/api/favorites/check/${ticketId}`), {
         method: 'GET',
         credentials: 'include',
       });
@@ -55,7 +56,7 @@ const FavoriteButton = ({ ticketId, size = "lg", className = "", onFavoriteChang
       setIsLoading(true);
       
       const endpoint = isFavorite ? 'remove' : 'add';
-      const response = await fetch(`http://localhost:3000/api/favorites/${endpoint}`, {
+      const response = await fetch(buildApiUrl(`/api/favorites/${endpoint}`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

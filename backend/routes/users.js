@@ -13,7 +13,25 @@ router.get('/current', isAuthenticated, (req, res) => {
   res.json(user);
 });
 
-// Get user profile by username
+// Get user profile by username for the hover popup
+router.get('/profile/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const User = require('../models/User');
+    const userProfile = await User.getProfileForPopup(username);
+    
+    if (!userProfile) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json(userProfile);
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user profile by username (original endpoint)
 router.get('/:username', async (req, res) => {
   try {
     // This would typically query the database

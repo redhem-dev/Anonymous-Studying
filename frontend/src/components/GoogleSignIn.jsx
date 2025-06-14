@@ -1,11 +1,12 @@
 import React from 'react';
 import logo from '../assets/logo.png';
+import { buildApiUrl } from '../config/apiConfig';
 
 const GoogleSignIn = () => {
   // Function to handle Google sign-in
   const handleGoogleSignIn = () => {
     // Redirect to the backend Google auth route
-    window.location.href = 'http://localhost:3000/auth/google';
+    window.location.href = buildApiUrl('/auth/google');
   };
 
   return (

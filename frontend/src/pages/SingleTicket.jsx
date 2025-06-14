@@ -4,9 +4,11 @@ import Navbar from '../components/Navbar';
 import FavoriteButton from '../components/FavoriteButton';
 import VoteButtons from '../components/VoteButtons';
 import EditTicketModal from '../components/EditTicketModal';
+import UserPopup from '../components/UserPopup';
 import useAuth from '../hooks/useAuth';
 import useUpdateTicket from '../hooks/useUpdateTicket';
 import axios from 'axios';
+import { buildApiUrl } from '../config/apiConfig';
 
 const SingleTicket = () => {
   const { ticketId } = useParams();
@@ -32,7 +34,7 @@ const SingleTicket = () => {
         setError(null);
         
         // Fetch the ticket
-        const ticketResponse = await fetch(`http://localhost:3000/api/tickets/${ticketId}`, {
+        const ticketResponse = await fetch(buildApiUrl(`/api/tickets/${ticketId}`), {
           credentials: 'include'
         });
         
@@ -44,7 +46,7 @@ const SingleTicket = () => {
         setTicket(ticketData);
         
         // Fetch the replies
-        const repliesResponse = await fetch(`http://localhost:3000/api/tickets/${ticketId}/replies`, {
+        const repliesResponse = await fetch(buildApiUrl(`/api/tickets/${ticketId}/replies`), {
           credentials: 'include'
         });
         
@@ -59,14 +61,14 @@ const SingleTicket = () => {
         if (isAuthenticated) {
           try {
             // Fetch ticket votes
-            const ticketVotesResponse = await fetch('http://localhost:3000/api/tickets/user/votes', {
+            const ticketVotesResponse = await fetch(buildApiUrl('/api/tickets/user/votes'), {
               credentials: 'include'
             });
             const ticketVotesData = await ticketVotesResponse.json();
             setTicketVotes(ticketVotesData);
             
             // Fetch reply votes from our new endpoint
-            const replyVotesResponse = await fetch('http://localhost:3000/api/tickets/user/reply-votes', {
+            const replyVotesResponse = await fetch(buildApiUrl('/api/tickets/user/reply-votes'), {
               credentials: 'include'
             });
             const replyVotesData = await replyVotesResponse.json();
@@ -139,7 +141,7 @@ const SingleTicket = () => {
     
     try {
       // Send the reply to the backend
-      const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/replies`, {
+      const response = await fetch(buildApiUrl(`/api/tickets/${ticketId}/replies`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -159,7 +161,7 @@ const SingleTicket = () => {
       setReplyContent('');
       
       // Fetch updated replies
-      const repliesResponse = await fetch(`http://localhost:3000/api/tickets/${ticketId}/replies`, {
+      const repliesResponse = await fetch(buildApiUrl(`/api/tickets/${ticketId}/replies`), {
         credentials: 'include'
       });
       
@@ -187,13 +189,13 @@ const SingleTicket = () => {
   // Handle accepting an answer
   const handleAcceptAnswer = async (replyId) => {
     if (!isAuthenticated || !ticket || user.id !== ticket.author_id) {
-      console.log('Authorization check failed:', { isAuthenticated, userId: user?.id, authorId: ticket?.author_id });
+
       return;
     }
     
     try {
-      console.log('Accepting answer for reply:', replyId);
-      const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/replies/${replyId}/accept`, {
+
+      const response = await fetch(buildApiUrl(`/api/tickets/${ticketId}/replies/${replyId}/accept`), {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -208,7 +210,7 @@ const SingleTicket = () => {
       }
       
       const result = await response.json();
-      console.log('Accept answer response:', result);
+
       
       // Update local state
       setTicket(prev => ({ ...prev, status: 'closed' }));
@@ -292,7 +294,7 @@ const SingleTicket = () => {
                   )}
                 </h1>
                 <div className="flex items-center space-x-3">
-                  {isAuthenticated && user && ticket.author_id === user.id && (
+                  {isAuthenticated && user && ticket.author_id === user.id && ticket.status !== 'closed' && (
                     <button
                       onClick={() => setIsEditModalOpen(true)}
                       className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -308,7 +310,9 @@ const SingleTicket = () => {
               </div>
               <div className="flex flex-wrap items-center text-sm text-gray-500 gap-4">
                 <span>Asked {formatDate(ticket.created_at)}</span>
-                <span>by <span className="font-medium text-gray-700">{ticket.author_username}</span></span>
+                <span>by <UserPopup username={ticket.author_username}>
+                  <span className="font-medium text-gray-700 cursor-pointer">{ticket.author_username}</span>
+                </UserPopup></span>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   {ticket.topic_name}
                 </span>
@@ -321,12 +325,16 @@ const SingleTicket = () => {
                 {/* Header with author and topic */}
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center">
-                    <img
-                      className="h-8 w-8 rounded-full mr-2 cursor-pointer hover:opacity-80"
-                      src={`https://ui-avatars.com/api/?name=${ticket.author_username}&background=random`}
-                      alt={`${ticket.author_username}'s avatar`}
-                    />
-                    <span className="text-sm font-medium text-gray-700">{ticket.author_username}</span>
+                    <UserPopup username={ticket.author_username}>
+                      <div className="flex items-center cursor-pointer">
+                        <img
+                          className="h-8 w-8 rounded-full mr-2 hover:opacity-80"
+                          src={`https://ui-avatars.com/api/?name=${ticket.author_username}&background=random`}
+                          alt={`${ticket.author_username}'s avatar`}
+                        />
+                        <span className="text-sm font-medium text-gray-700">{ticket.author_username}</span>
+                      </div>
+                    </UserPopup>
                   </div>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200">
                     {ticket.topic_name}
@@ -432,12 +440,16 @@ const SingleTicket = () => {
                     {/* Header with author */}
                     <div className="flex justify-between items-center mb-2">
                       <div className="flex items-center">
-                        <img
-                          className="h-8 w-8 rounded-full mr-2 cursor-pointer hover:opacity-80"
-                          src={`https://ui-avatars.com/api/?name=${reply.author_username}&background=random`}
-                          alt={`${reply.author_username}'s avatar`}
-                        />
-                        <span className="text-sm font-medium text-gray-700">{reply.author_username}</span>
+                        <UserPopup username={reply.author_username}>
+                          <div className="flex items-center cursor-pointer">
+                            <img
+                              className="h-8 w-8 rounded-full mr-2 hover:opacity-80"
+                              src={`https://ui-avatars.com/api/?name=${reply.author_username}&background=random`}
+                              alt={`${reply.author_username}'s avatar`}
+                            />
+                            <span className="text-sm font-medium text-gray-700">{reply.author_username}</span>
+                          </div>
+                        </UserPopup>
                       </div>
                       <div className="flex items-center">
                         {/* Only show Accept Answer button if ticket status is not resolved and current user is author */}

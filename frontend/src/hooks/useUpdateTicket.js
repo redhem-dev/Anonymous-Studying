@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { buildApiUrl } from '../config/apiConfig';
 
 /**
  * Hook for updating existing tickets
@@ -33,7 +34,7 @@ const useUpdateTicket = () => {
 
       const response = await axios({
         method: 'PUT',
-        url: `http://localhost:3000/api/tickets/${ticketId}`,
+        url: buildApiUrl(`/api/tickets/${ticketId}`),
         headers: {
           'Content-Type': 'application/json',
         },

@@ -75,7 +75,7 @@ const SearchResults = () => {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   // In a real app, navigate to user profile
-                                  console.log('Navigate to user profile:', ticket.author_username);
+
                                 }}
                               />
                               <span className="text-sm font-medium text-gray-700">{ticket.author_username || 'Anonymous'}</span>
@@ -85,7 +85,7 @@ const SearchResults = () => {
                               onClick={(e) => {
                                 e.preventDefault();
                                 // In a real app, filter by topic
-                                console.log('Filter by topic:', ticket.topic_name);
+
                               }}
                             >
                               {ticket.topic_name || 'General'}

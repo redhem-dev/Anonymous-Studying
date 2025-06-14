@@ -4,13 +4,14 @@ import logo from '../assets/logo.png';
 import Sidebar from './Sidebar';
 import NotificationsPopup from './NotificationsPopup';
 import useAuth from '../hooks/useAuth';
+import useNotifications from '../hooks/useNotifications';
 
 const Navbar = () => {
   // Use auth hook for user data and avatar display
   const { user, getUserInitials } = useAuth();
   
-  // Example notification count
-  const notificationCount = 3;
+  // Use notifications hook for real-time notification data
+  const { notifications, notificationCount, loading, markAllAsRead } = useNotifications();
   
   // State for search query
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,7 +105,13 @@ const Navbar = () => {
             {/* Notifications Popup */}
             <NotificationsPopup 
               isOpen={notificationsOpen} 
-              onClose={() => setNotificationsOpen(false)} 
+              onClose={() => setNotificationsOpen(false)}
+              notifications={notifications}
+              loading={loading}
+              onMarkAllAsRead={() => {
+                markAllAsRead();
+                setNotificationsOpen(false);
+              }}
             />
           </div>
           

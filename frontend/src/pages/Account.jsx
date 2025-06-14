@@ -5,6 +5,7 @@ import useAuth from '../hooks/useAuth';
 import useUserProfile from '../hooks/useUserProfile';
 import EditTicketModal from '../components/EditTicketModal';
 import FavoriteButton from '../components/FavoriteButton';
+import { buildApiUrl } from '../config/apiConfig';
 
 const Account = () => {
   const location = useLocation();
@@ -12,14 +13,17 @@ const Account = () => {
   const fileInputRef = useRef(null);
   
   // Use authentication hook for user data
-  const { user, getUserInitials, isAuthenticated } = useAuth();
+  const { user, getUserInitials, isAuthenticated, refreshAuth } = useAuth();
   const { userTickets, isLoading: isLoadingTickets, error: ticketsError, deleteTicket, editTicket } = useUserProfile();
   
   // Settings state
-  const [settings, setSettings] = useState({
-    notificationsEnabled: true,
-    darkModeEnabled: false
-  });
+  const [settings, setSettings] = useState({});
+  
+  // Username update state
+  const [newUsername, setNewUsername] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+  const [usernameSuccess, setUsernameSuccess] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   
   // Edit ticket modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -38,6 +42,78 @@ const Account = () => {
     }
   };
   
+  // Handle username change
+  const handleUsernameChange = async () => {
+    // Basic validation
+    if (!newUsername.trim()) {
+      setUsernameError('Username cannot be empty');
+      return;
+    }
+    
+    // Username format validation
+    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    if (!usernameRegex.test(newUsername)) {
+      setUsernameError('Username must be 3-20 characters and can only contain letters, numbers, and underscores');
+      return;
+    }
+    
+    // Don't update if it's the same as current username
+    if (newUsername === user?.username) {
+      setUsernameError('New username is the same as current username');
+      return;
+    }
+    
+    try {
+      setIsCheckingUsername(true);
+      setUsernameError('');
+      
+      // First check if username is already taken
+      const checkResponse = await fetch(buildApiUrl('/api/auth/check-username'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ username: newUsername })
+      });
+      
+      const checkData = await checkResponse.json();
+      
+      if (checkData.exists) {
+        setUsernameError('Username is already taken');
+        setIsCheckingUsername(false);
+        return;
+      }
+      
+      // If username is available, update it
+      const updateResponse = await fetch(buildApiUrl('/api/auth/update-username'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ newUsername })
+      });
+      
+      const updateData = await updateResponse.json();
+      
+      if (updateResponse.ok && updateData.success) {
+        setUsernameSuccess(true);
+        setNewUsername(''); // Clear the input field
+        
+        // Refresh auth state to update the displayed username
+        await refreshAuth();
+      } else {
+        setUsernameError(updateData.error || 'Failed to update username');
+      }
+    } catch (error) {
+      console.error('Error updating username:', error);
+      setUsernameError('An error occurred while updating username');
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
+  
   // Fetch user's favorites
   useEffect(() => {
     const fetchFavorites = async () => {
@@ -47,7 +123,7 @@ const Account = () => {
         setIsLoadingFavorites(true);
         setFavoritesError(null);
         
-        const response = await fetch('http://localhost:3000/api/favorites', {
+        const response = await fetch(buildApiUrl('/api/favorites'), {
           credentials: 'include'
         });
         
@@ -197,7 +273,7 @@ const Account = () => {
                 {/* Username field */}
                 <div>
                   <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                    Username
+                    Current Username
                   </label>
                   <input
                     type="text"
@@ -207,47 +283,46 @@ const Account = () => {
                     value={user?.username || ''}
                     readOnly
                   />
+                  
+                  <div className="mt-4">
+                    <label htmlFor="newUsername" className="block text-sm font-medium text-gray-700">
+                      New Username
+                    </label>
+                    <div className="mt-1 flex rounded-md shadow-sm">
+                      <input
+                        type="text"
+                        name="newUsername"
+                        id="newUsername"
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        value={newUsername}
+                        onChange={(e) => {
+                          setNewUsername(e.target.value);
+                          setUsernameError('');
+                          setUsernameSuccess(false);
+                        }}
+                        placeholder="Enter new username"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleUsernameChange}
+                        disabled={isCheckingUsername || !newUsername.trim()}
+                        className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isCheckingUsername ? 'Updating...' : 'Update'}
+                      </button>
+                    </div>
+                    {usernameError && (
+                      <p className="mt-2 text-sm text-red-600">{usernameError}</p>
+                    )}
+                    {usernameSuccess && (
+                      <p className="mt-2 text-sm text-green-600">Username updated successfully!</p>
+                    )}
+                  </div>
                 </div>
                 
-                {/* Notification settings */}
-                <div className="flex items-center">
-                  <input
-                    id="notifications"
-                    name="notifications"
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
-                    checked={settings.notificationsEnabled}
-                    onChange={() => setSettings(prev => ({ ...prev, notificationsEnabled: !prev.notificationsEnabled }))}
-                  />
-                  <label htmlFor="notifications" className="ml-2 block text-sm text-gray-700 cursor-pointer">
-                    Enable notifications
-                  </label>
-                </div>
+                {/* Settings toggles removed */}
                 
-                {/* Dark mode settings */}
-                <div className="flex items-center">
-                  <input
-                    id="darkMode"
-                    name="darkMode"
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
-                    checked={settings.darkModeEnabled}
-                    onChange={() => setSettings(prev => ({ ...prev, darkModeEnabled: !prev.darkModeEnabled }))}
-                  />
-                  <label htmlFor="darkMode" className="ml-2 block text-sm text-gray-700 cursor-pointer">
-                    Enable dark mode
-                  </label>
-                </div>
-                
-                {/* Save button */}
-                <div>
-                  <button
-                    type="button"
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
-                  >
-                    Save Changes
-                  </button>
-                </div>
+                {/* Save button removed */}
               </div>
             </div>
           )}
@@ -363,23 +438,40 @@ const Account = () => {
                         <div className="flex items-center space-x-2">
                           {/* View count and replies */}
                           <div className="flex items-center space-x-4 text-sm text-gray-500 mr-4">
-                            <span>{ticket.upvotes || 0} upvotes</span>
-                            <span>{ticket.reply_count || 0} replies</span>
+                            {/* Upvotes */}
+                            <span className="flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                              </svg>
+                              {ticket.upvotes || 0}
+                            </span>
+                            
+                            {/* Downvotes */}
+                            <span className="flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{transform: 'rotate(180deg)'}}>
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                              </svg>
+                              {ticket.downvotes || 0}
+                            </span>
+                            
+
                           </div>
                           
-                          {/* Edit button */}
-                          <button 
-                            onClick={() => {
-                              setTicketToEdit(ticket);
-                              setIsEditModalOpen(true);
-                            }}
-                            className="p-1 text-gray-500 hover:text-blue-500 focus:outline-none"
-                            title="Edit ticket"
-                          >
+                          {/* Edit button - Only show if ticket is not resolved */}
+                          {ticket.status !== 'closed' && (
+                            <button 
+                              onClick={() => {
+                                setTicketToEdit(ticket);
+                                setIsEditModalOpen(true);
+                              }}
+                              className="p-1 text-gray-500 hover:text-blue-500 focus:outline-none"
+                              title="Edit ticket"
+                            >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                           </button>
+                          )}
                           
                           {/* Delete button */}
                           <button 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import useAuth from '../hooks/useAuth';
+import { buildApiUrl } from '../config/apiConfig';
 
 const SetUsername = () => {
   const [username, setUsername] = useState('');
@@ -75,7 +76,7 @@ const SetUsername = () => {
 
     try {
       // Step 1: Check if username is available
-      const checkResponse = await fetch('http://localhost:3000/api/auth/check-username', {
+      const checkResponse = await fetch(buildApiUrl('/api/auth/check-username'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username }),
@@ -91,7 +92,7 @@ const SetUsername = () => {
       }
 
       // Step 2: Register the user
-      const registerResponse = await fetch('http://localhost:3000/api/auth/register', {
+      const registerResponse = await fetch(buildApiUrl('/api/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, username }),

@@ -5,8 +5,10 @@ import Navbar from '../components/Navbar';
 import CreateTicketModal from '../components/CreateTicketModal';
 import FavoriteButton from '../components/FavoriteButton';
 import VoteButtons from '../components/VoteButtons';
+import UserPopup from '../components/UserPopup';
 import useAuth from '../hooks/useAuth';
 import useTickets from '../hooks/useTickets';
+import { buildApiUrl } from '../config/apiConfig';
 
 const Dashboard = () => {
   // State for create ticket modal
@@ -33,13 +35,13 @@ const Dashboard = () => {
     const fetchData = async () => {
       try {
         // Fetch tickets
-        const ticketsResponse = await axios.get('http://localhost:3000/api/tickets');
+        const ticketsResponse = await axios.get(buildApiUrl('/api/tickets'));
         setTickets(ticketsResponse.data);
         
         // If authenticated, fetch user's votes
         if (isAuthenticated) {
           try {
-            const votesResponse = await fetch('http://localhost:3000/api/tickets/user/votes', {
+            const votesResponse = await fetch(buildApiUrl('/api/tickets/user/votes'), {
               method: 'GET',
               credentials: 'include',
               headers: {
@@ -134,14 +136,28 @@ const Dashboard = () => {
                   <div className="px-4 py-5 sm:px-6">
                     {/* Header with author and topic */}
                     <div className="flex justify-between items-center mb-2">
-                      <div className="flex items-center">
-                        <img
-                          className="h-8 w-8 rounded-full mr-2 cursor-pointer hover:opacity-80"
-                          src={`https://ui-avatars.com/api/?name=${ticket.author_username || 'Anonymous'}&background=random`}
-                          alt={`${ticket.author_username || 'Anonymous'}'s avatar`}
-                          onClick={() => console.log('Navigate to user profile:', ticket.author_username)}
-                        />
-                        <span className="text-sm font-medium text-gray-700">{ticket.author_username || 'Anonymous'}</span>
+                      <div className="flex items-center mb-1">
+                        {ticket.author_username ? (
+                          <UserPopup username={ticket.author_username}>
+                            <div className="flex items-center cursor-pointer">
+                              <img 
+                                className="h-8 w-8 rounded-full mr-2" 
+                                src={`https://ui-avatars.com/api/?name=${ticket.author_username}&background=random`} 
+                                alt={`${ticket.author_username}'s avatar`}
+                              />
+                              <span className="text-sm font-medium text-gray-700">{ticket.author_username}</span>
+                            </div>
+                          </UserPopup>
+                        ) : (
+                          <div className="flex items-center">
+                            <img 
+                              className="h-8 w-8 rounded-full mr-2" 
+                              src="https://ui-avatars.com/api/?name=Anonymous&background=random" 
+                              alt="Anonymous user's avatar"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Anonymous</span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center space-x-2">
                         <FavoriteButton 

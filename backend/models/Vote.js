@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const User = require('./User');
 
 class Vote {
     // Add a vote to a ticket (either upvote or downvote)
@@ -34,6 +35,21 @@ class Vote {
                             [ticketId]
                         );
                     }
+                    // Get the ticket author's ID to update their reputation
+                    const [ticketResult] = await pool.execute(
+                        'SELECT author_id FROM tickets WHERE id = ?',
+                        [ticketId]
+                    );
+
+                    
+                    if (ticketResult.length > 0 && ticketResult[0].author_id) {
+
+                        // Update the author's reputation
+                        await User.calculateAndUpdateReputation(ticketResult[0].author_id);
+                    } else {
+                        console.warn(`No valid author_id found for ticket ${ticketId}`);
+                    }
+                    
                     return { action: 'changed', previous: existingVote[0].vote_type, new: voteType };
                 }
             } else {
@@ -55,6 +71,18 @@ class Vote {
                         [ticketId]
                     );
                 }
+                
+                // Get the ticket author's ID to update their reputation
+                const [ticketResult] = await pool.execute(
+                    'SELECT author_id FROM tickets WHERE id = ?',
+                    [ticketId]
+                );
+                
+                if (ticketResult.length > 0) {
+                    // Update the author's reputation
+                    await User.calculateAndUpdateReputation(ticketResult[0].author_id);
+                }
+                
                 return { action: 'added', new: voteType };
             }
         } catch (error) {
@@ -95,6 +123,17 @@ class Vote {
                     'UPDATE tickets SET downvotes = GREATEST(downvotes - 1, 0) WHERE id = ?',
                     [ticketId]
                 );
+            }
+            
+            // Get the ticket author's ID to update their reputation after vote removal
+            const [ticketResult] = await pool.execute(
+                'SELECT author_id FROM tickets WHERE id = ?',
+                [ticketId]
+            );
+            
+            if (ticketResult.length > 0) {
+                // Update the author's reputation
+                await User.calculateAndUpdateReputation(ticketResult[0].author_id);
             }
             
             return { action: 'removed', previous: voteType };
@@ -158,6 +197,21 @@ class Vote {
                             [replyId]
                         );
                     }
+                    // Get the reply author's ID to update their reputation
+                    const [replyResult] = await pool.execute(
+                        'SELECT author_id FROM replies WHERE id = ?',
+                        [replyId]
+                    );
+
+                    
+                    if (replyResult.length > 0 && replyResult[0].author_id) {
+
+                        // Update the author's reputation
+                        await User.calculateAndUpdateReputation(replyResult[0].author_id);
+                    } else {
+                        console.warn(`No valid author_id found for reply ${replyId}`);
+                    }
+                    
                     return { action: 'changed', previous: existingVote[0].vote_type, new: voteType };
                 }
             } else {
@@ -179,6 +233,18 @@ class Vote {
                         [replyId]
                     );
                 }
+                
+                // Get the reply author's ID to update their reputation
+                const [replyResult] = await pool.execute(
+                    'SELECT author_id FROM replies WHERE id = ?',
+                    [replyId]
+                );
+                
+                if (replyResult.length > 0) {
+                    // Update the author's reputation
+                    await User.calculateAndUpdateReputation(replyResult[0].author_id);
+                }
+                
                 return { action: 'added', new: voteType };
             }
         } catch (error) {
@@ -219,6 +285,17 @@ class Vote {
                     'UPDATE replies SET downvotes = GREATEST(downvotes - 1, 0) WHERE id = ?',
                     [replyId]
                 );
+            }
+            
+            // Get the reply author's ID to update their reputation after vote removal
+            const [replyResult] = await pool.execute(
+                'SELECT author_id FROM replies WHERE id = ?',
+                [replyId]
+            );
+            
+            if (replyResult.length > 0) {
+                // Update the author's reputation
+                await User.calculateAndUpdateReputation(replyResult[0].author_id);
             }
             
             return { action: 'removed', previous: voteType };

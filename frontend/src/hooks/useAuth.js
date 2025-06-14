@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { buildApiUrl } from '../config/apiConfig';
 
 const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -45,7 +46,7 @@ const useAuth = () => {
       refreshInProgress.current = true;
       setIsLoading(true);
       
-      const response = await fetch('http://localhost:3000/api/auth/status', {
+      const response = await fetch(buildApiUrl('/api/auth/status'), {
         credentials: 'include',
         headers: {
           'Cache-Control': 'no-cache',
@@ -106,7 +107,7 @@ const useAuth = () => {
   const logout = async () => {
     try {
       // STEP 1: Call logout endpoint with explicit 'no-cache' headers
-      const response = await fetch('http://localhost:3000/api/auth/logout', {
+      const response = await fetch(buildApiUrl('/api/auth/logout'), {
         method: 'POST',
         credentials: 'include',
         headers: {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { buildApiUrl } from '../config/apiConfig';
 
 /**
  * Hook for creating new tickets
@@ -29,7 +30,7 @@ const useCreateTicket = () => {
           .filter(tag => tag.length > 0);
       }
 
-      const response = await fetch('http://localhost:3000/api/tickets', {
+      const response = await fetch(buildApiUrl('/api/tickets'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
