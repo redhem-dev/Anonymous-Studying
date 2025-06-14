@@ -22,7 +22,7 @@ const app = express();
 
 // Enable CORS for frontend
 app.use(cors({
-    origin: 'http://localhost:5173', // Your frontend URL
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173', // Your frontend URL
     credentials: true // Allow cookies to be sent
 }));
 
@@ -59,11 +59,11 @@ app.use('/api/auth', authRoutes); // Also mount under /api for frontend API call
 
 // Special route for Google callback - this must match exactly what's registered in Google Cloud Console
 app.get('/google/callback', passport.authenticate('google', {
-    failureRedirect: 'http://localhost:5173/login',
+    failureRedirect: process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : 'http://localhost:5173/login',
     session: true
 }), (req, res) => {
     // Successful authentication, redirect to frontend callback route
-    res.redirect('http://localhost:5173/auth/callback');
+    res.redirect(process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/auth/callback` : 'http://localhost:5173/auth/callback');
 });
 
 // Protected route example
