@@ -23,8 +23,17 @@ const app = express();
 // Enable CORS for frontend
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173', // Your frontend URL
-    credentials: true // Allow cookies to be sent
+    credentials: true, // Allow cookies to be sent
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Set-Cookie']
 }));
+
+// Add additional headers for cookies
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Credentials', true);
+    next();
+});
 
 app.use(express.json());
 
@@ -32,13 +41,13 @@ app.use(express.json());
 app.use(session({ 
     secret: process.env.SESSION_SECRET, 
     resave: false, 
-    saveUninitialized: false,
+    saveUninitialized: true, // Changed to true to ensure session is always initialized
     name: 'connect.sid', // Be explicit about the cookie name
     cookie: {
-        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+        secure: true, // Must be true when sameSite is 'none'
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: 'lax', // Allow cross-site requests with top-level navigation
+        sameSite: 'none', // For cross-domain cookies
         path: '/' // Explicit path setting
     },
     unset: 'destroy' // Ensure complete removal on req.session.destroy()
