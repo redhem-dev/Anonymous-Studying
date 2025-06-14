@@ -1,0 +1,13 @@
+{
+  "name": "anonymous-studying-tests",
+  "version": "1.0.0",
+  "description": "Automation tests for Anonymous Studying user management.",
+  "main": "user-account-test.js",
+  "scripts": {
+    "test": "node user-account-test.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "selenium-webdriver": "^4.21.0"
+  }
+}

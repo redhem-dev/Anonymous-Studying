@@ -1,0 +1,10 @@
+.env
+node_modules/
+*.log
+coverage/
+*.tmp
+*.temp
+*.cache
+*.png
+.DS_Store
+
