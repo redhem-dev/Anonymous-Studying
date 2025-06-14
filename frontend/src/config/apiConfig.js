@@ -8,13 +8,13 @@
 // API Base URL determination based on environment
 const getApiBaseURL = () => {
   // For local development
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     return 'http://localhost:3000';
   }
   
   // For production, check if environment variables are provided
-  if (process.env.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL;
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
   }
   
   // Default production URL if no environment variables are set
