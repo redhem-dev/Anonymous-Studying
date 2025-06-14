@@ -91,20 +91,20 @@ const authController = {
   // Google callback
   googleCallback: [
     passport.authenticate('google', { 
-      failureRedirect: 'http://localhost:5173/login',
+      failureRedirect: process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : 'http://localhost:5173/login',
       session: true
     }),
     async (req, res) => {
       try {
         // By this point, req.user should contain the user object passed from Google strategy
         if (!req.user) {
-          return res.redirect('http://localhost:5173/login?error=no_user');
+          return res.redirect(process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login?error=no_user` : 'http://localhost:5173/login?error=no_user');
         }
         
         // Make sure the session is saved before redirecting
         req.session.save((err) => {
           if (err) {
-            return res.redirect('http://localhost:5173/login?error=session_error');
+            return res.redirect(process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login?error=session_error` : 'http://localhost:5173/login?error=session_error');
           }
           
           // Check if user is a temp user or a real DB user
@@ -112,17 +112,17 @@ const authController = {
             // New user - needs to set username
             const email = req.user.email || '';
             const encodedEmail = encodeURIComponent(email);
-            return res.redirect(`http://localhost:5173/set-username?email=${encodedEmail}`);
+            return res.redirect(process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/set-username?email=${encodedEmail}` : `http://localhost:5173/set-username?email=${encodedEmail}`);
           } else if (req.user.id) {
             // Existing user - go to dashboard
-            return res.redirect('http://localhost:5173/dashboard');
+            return res.redirect(process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/dashboard` : 'http://localhost:5173/dashboard');
           } else {
             // Something is wrong with the user object
-            return res.redirect('http://localhost:5173/login?error=invalid_user');
+            return res.redirect(process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login?error=invalid_user` : 'http://localhost:5173/login?error=invalid_user');
           }
         });
       } catch (error) {
-        res.redirect('http://localhost:5173/login?error=callback_error');
+        res.redirect(process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login?error=callback_error` : 'http://localhost:5173/login?error=callback_error');
       }
     }
   ],
